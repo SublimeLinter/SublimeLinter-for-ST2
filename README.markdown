@@ -48,3 +48,18 @@ view.run_command("run_linter"), "LINTER") where "LINTER" is one of "Python", "PH
 4. If you run a linter via a commmand as in 3. above, the realtime linter is automatically disabled. To reset to its previous state (on or off) AND to clear all visible "errors", you use the command
 view.run_command("reset_linter").
 
+Python and PEP8
+---------------
+
+If you use SublimeLint for pep8 checks, you can ignore some of the conventions,
+with the user preference "pep8_ignore".
+
+Here is an example:
+
+    "pep8_ignore":
+        [
+            "E501"
+        ],
+
+This configuration will ignore the long lines convention. You can see the list
+of codes (as "E501") in [this file](https://github.com/jcrocholl/pep8/blob/master/pep8.py).
