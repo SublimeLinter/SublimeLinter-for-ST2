@@ -1,7 +1,9 @@
 # perl.py - sublimelint package for checking perl files
 
-import subprocess, os
+import subprocess
+import os
 import sublime
+
 
 def check(codeString, filename):
     info = None
@@ -31,7 +33,11 @@ description =\
 
 
 def run(code, view, filename='untitled'):
-    errors = check(code, filename)
+    try:
+        errors = check(code, filename)
+    except OSError:
+        print 'jshint is not available'
+        errors = []
 
     lines = set()
     underline = []  # leave this here for compatibility with original plugin
@@ -67,8 +73,9 @@ def run(code, view, filename='untitled'):
                 return
 
         iters = re.finditer(regex, lineText)
-        results = [(result.start('underline'), result.end('underline')) for result in iters if
-                                            not wordmatch or result.group('underline') == wordmatch]
+        results = [(result.start('underline'),
+                    result.end('underline')) for result in iters if
+                    not wordmatch or result.group('underline') == wordmatch]
 
         for start, end in results:
             underlineRange(lineno, start + offset, end - start)
