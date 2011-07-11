@@ -134,9 +134,11 @@ def pyflakes_check(codeString, filename):
         w = pyflakes.Checker(tree, filename)
         return w.messages
 
+
 class Dict2Obj:
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
+
 
 def pep8_check(code, filename, ignore=None):
     messages = []
@@ -145,7 +147,8 @@ def pep8_check(code, filename, ignore=None):
     if _lines:
         def report_error(self, line_number, offset, text, check):
             code = text[:4]
-            msg = text[5:]
+            msg = "(%s) %s" % (code, text[5:])
+
             if pep8.ignore_code(code):
                 return
             if code.startswith('E'):
@@ -155,6 +158,7 @@ def pep8_check(code, filename, ignore=None):
         pep8.Checker.report_error = report_error
 
         _ignore = ignore + pep8.DEFAULT_IGNORE.split(',')
+
         class FakeOptions:
             verbose = 0
             select = []
