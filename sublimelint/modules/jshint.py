@@ -1,4 +1,4 @@
-# perl.py - sublimelint package for checking perl files
+# jshint.py - sublimelint package for checking Javascript files
 
 import subprocess
 import os
@@ -21,7 +21,8 @@ def check(codeString, filename):
     lines = process.stdout.readlines()
     return lines
 
-# start sublimelint perl plugin
+
+# start sublimelint jshint plugin
 import re
 __all__ = ['run', 'language']
 language = 'JavaScript'

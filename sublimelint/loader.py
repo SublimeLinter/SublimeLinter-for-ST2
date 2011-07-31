@@ -5,6 +5,7 @@ import glob
 import os
 import sys
 
+
 class Loader(object):
     '''utility class to load (and reload if necessary) sublimelint modules'''
     def __init__(self, basedir, linters, descriptions):
@@ -22,7 +23,7 @@ class Loader(object):
         for modf in glob.glob('%s/*.py' % self.basepath):
             base, name = os.path.split(modf)
             name = name.split('.', 1)[0]
-            if name in self.ignore: 
+            if name in self.ignore:
                 continue
             self.load_module(name)
 
@@ -37,15 +38,15 @@ class Loader(object):
         __import__(fullmod)
 
         # this following line of code does two things:
-        # first, we get the actual module from sys.modules, 
+        # first, we get the actual module from sys.modules,
         #    not the base mod returned by __import__
-        # second, we get an updated version with reload() 
+        # second, we get an updated version with reload()
         #    so module development is easier
         # (to make sublime text reload language submodule,
         #  just save sublimelint_plugin.py )
         mod = sys.modules[fullmod] = reload(sys.modules[fullmod])
 
-        # update module's __file__ to absolute path so we can reload it 
+        # update module's __file__ to absolute path so we can reload it
         # if saved with sublime text
         mod.__file__ = os.path.abspath(mod.__file__).rstrip('co')
 
@@ -68,7 +69,7 @@ class Loader(object):
                 print 'SublimeLint: no description present for %s' % name
             except:
                 print 'SublimeLint: error seeking description of %s' % name
-        
+
         os.chdir(pushd)
 
     def reload_module(self, module):
@@ -79,6 +80,6 @@ class Loader(object):
         fullmod = module.__name__
         if not fullmod.startswith(self.modpath):
             return
-        
-        name = fullmod.replace(self.modpath+'.', '', 1)
+
+        name = fullmod.replace(self.modpath + '.', '', 1)
         self.load_module(name)

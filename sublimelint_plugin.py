@@ -50,17 +50,28 @@ status bar.
 Color: lint "errors"
 --------------------
 
-The color used to outline lint errors is the invalid.illegal scope
-which should normally be defined in your default theme.
+There are three types of "errors" flagged by sublime lint: illegal,
+violation, and warning. For each type, SublimeLint will indicate the offending
+line and the character position at which the error occurred on the line.
 
+By default SublimeLint will outline offending lines using the background color
+of the "sublimelint.<type>" theme style, and underline the character position
+using the background color of the "invalid.<type>" theme style, where <type>
+is one of the three error types.
 
-Color: annotations
-------------------
+If these styles are not defined, the color will be black when there is a light
+background color and black when there is a dark background color. You may
+define a single "sublimelint" or "invalid" style to color all three types,
+or define separate substyles for one or more types to color them differently.
+Most themes have an "invalid" theme style defined by default.
 
-The color used to outline lint errors is the invalid.illegal scope which
-should not exist by default in your default theme; however, it should
-still be visible due to the way Sublime Text displays non defined scopes.
-To customize the color used for highlighting user notes, add the following
+If you want to make the offending lines glaringly obvious (perhaps for those
+who tend to ignore lint errors), you can set the user setting "sublimelint_fill_outlines"
+to true, in which case lines that have errors will be colored with the background
+and foreground color of the "sublime.<type>" theme style. Unless you have defined
+those styles, this setting should be left false.
+
+To customize the colors used for highlighting errors and user notes, add the following
 to your theme (adapting the color to your liking):
         <dict>
             <key>name</key>
@@ -69,8 +80,10 @@ to your theme (adapting the color to your liking):
             <string>sublimelint.notes</string>
             <key>settings</key>
             <dict>
+                <key>background</key>
+                <string>#FFFFAA</string>
                 <key>foreground</key>
-                <string>#FFFFAAE0</string>
+                <string>#FFFFFF</string>
             </dict>
         </dict>
         <dict>
@@ -80,8 +93,10 @@ to your theme (adapting the color to your liking):
             <string>sublimelint.illegal</string>
             <key>settings</key>
             <dict>
+                <key>background</key>
+                <string>#FF4A52</string>
                 <key>foreground</key>
-                <string>#ff3A4ACC</string>
+                <string>#FFFFFF</string>
             </dict>
         </dict>
         <dict>
@@ -91,7 +106,7 @@ to your theme (adapting the color to your liking):
             <string>invalid.illegal</string>
             <key>settings</key>
             <dict>
-                <key>foreground</key>
+                <key>background</key>
                 <string>#FF0000</string>
             </dict>
         </dict>
@@ -102,8 +117,10 @@ to your theme (adapting the color to your liking):
             <string>sublimelint.warning</string>
             <key>settings</key>
             <dict>
+                <key>background</key>
+                <string>#DF9400</string>
                 <key>foreground</key>
-                <string>#DF940055</string>
+                <string>#FFFFFF</string>
             </dict>
         </dict>
         <dict>
@@ -113,8 +130,8 @@ to your theme (adapting the color to your liking):
             <string>invalid.warning</string>
             <key>settings</key>
             <dict>
-                <key>foreground</key>
-                <string>#DF9400</string>
+                <key>background</key>
+                <string>#FF0000</string>
             </dict>
         </dict>
         <dict>
@@ -124,8 +141,10 @@ to your theme (adapting the color to your liking):
             <string>sublimelint.violation</string>
             <key>settings</key>
             <dict>
-                <key>foreground</key>
+                <key>background</key>
                 <string>#ffffff33</string>
+                <key>foreground</key>
+                <string>#FFFFFF</string>
             </dict>
         </dict>
         <dict>
@@ -135,8 +154,8 @@ to your theme (adapting the color to your liking):
             <string>invalid.violation</string>
             <key>settings</key>
             <dict>
-                <key>foreground</key>
-                <string>#999999</string>
+                <key>background</key>
+                <string>#FF0000</string>
             </dict>
         </dict>
 
@@ -160,6 +179,7 @@ def help_collector(fn):
 def update_statusbar(view):
     vid = view.id()
     lineno = view.rowcol(view.sel()[0].end())[0]
+
     if vid in ERRORS and lineno in ERRORS[vid]:
         view.set_status('Linter', '; '.join(ERRORS[vid][lineno]))
     elif vid in VIOLATIONS and lineno in VIOLATIONS[vid]:
@@ -200,42 +220,40 @@ def add_lint_marks(view, lines, error_underlines, violation_underlines, warning_
     vid = view.id()
     erase_lint_marks(view)
     if warning_underlines:
-        view.add_regions('lint-underline-warning', warning_underlines, 'invalid.warning',
-                                            sublime.DRAW_EMPTY_AS_OVERWRITE)
+        view.add_regions('lint-underline-warning', warning_underlines, 'invalid.warning', sublime.DRAW_EMPTY_AS_OVERWRITE)
     if violation_underlines:
-        view.add_regions('lint-underline-violation', violation_underlines, 'invalid.violation',
-                                            sublime.DRAW_EMPTY_AS_OVERWRITE)
+        view.add_regions('lint-underline-violation', violation_underlines, 'invalid.violation', sublime.DRAW_EMPTY_AS_OVERWRITE)
     if error_underlines:
-        view.add_regions('lint-underline', error_underlines, 'invalid.illegal',
-                                            sublime.DRAW_EMPTY_AS_OVERWRITE)
+        view.add_regions('lint-underline-illegal', error_underlines, 'invalid.illegal', sublime.DRAW_EMPTY_AS_OVERWRITE)
     if lines:
-        warning_outlines = []
-        violation_outlines = []
-        error_outlines = []
+        fill_outlines = view.settings().get('sublimelint_fill_outlines', False)
+        outlines = {'warning': [], 'violation': [], 'illegal': []}
         for line in lines:
-            if line in WARNINGS[vid]:
-                warning_outlines.append(view.full_line(view.text_point(line, 0)))
-            if line in VIOLATIONS[vid]:
-                violation_outlines.append(view.full_line(view.text_point(line, 0)))
             if line in ERRORS[vid]:
-                error_outlines.append(view.full_line(view.text_point(line, 0)))
-        if warning_outlines:
-            view.add_regions('lint-outlines-warning', warning_outlines,
-                'sublimelint.warning', sublime.DRAW_OUTLINED)
-        if violation_outlines:
-            view.add_regions('lint-outlines-violation', violation_outlines,
-                'sublimelint.violation', sublime.DRAW_OUTLINED)
-        if error_outlines:
-            view.add_regions('lint-outlines', error_outlines,
-                'sublimelint.illegal', sublime.DRAW_OUTLINED)
+                outlines['illegal'].append(view.full_line(view.text_point(line, 0)))
+            elif line in WARNINGS[vid]:
+                outlines['warning'].append(view.full_line(view.text_point(line, 0)))
+            elif line in VIOLATIONS[vid]:
+                outlines['violation'].append(view.full_line(view.text_point(line, 0)))
+        for lint_type in outlines:
+            if outlines[lint_type]:
+                args = [
+                    'lint-outlines-{0}'.format(lint_type),
+                    outlines[lint_type],
+                    'sublimelint.{0}'.format(lint_type),
+                    'cross'
+                ]
+                if not fill_outlines:
+                    args.append(sublime.DRAW_OUTLINED)
+                view.add_regions(*args)
 
 
 def erase_lint_marks(view):
     '''erase all "lint" error marks from view'''
-    view.erase_regions('lint-underline')
+    view.erase_regions('lint-underline-illegal')
     view.erase_regions('lint-underline-violation')
     view.erase_regions('lint-underline-warning')
-    view.erase_regions('lint-outlines')
+    view.erase_regions('lint-outlines-illegal')
     view.erase_regions('lint-outlines-violation')
     view.erase_regions('lint-outlines-warning')
 
@@ -251,12 +269,11 @@ def select_linter(view):
 
 def highlight_notes(view):
     '''highlight user-specified annotations in a file'''
-    view.erase_regions('annotations')
+    view.erase_regions('lint-annotations')
     text = view.substr(sublime.Region(0, view.size()))
     regions = LINTERS["annotations"].run(text, view)
     if regions:
-        view.add_regions('annotations', regions, "sublimelint.annotations",
-                                            sublime.DRAW_EMPTY_AS_OVERWRITE)
+        view.add_regions('lint-annotations', regions, "sublimelint.annotations", sublime.DRAW_EMPTY_AS_OVERWRITE)
 
 
 def queue_linter(view):
