@@ -63,3 +63,16 @@ Here is an example:
 
 This configuration will ignore the long lines convention. You can see the list
 of codes (as "E501") in [this file](https://github.com/jcrocholl/pep8/blob/master/pep8.py).
+
+Python and PyFlakes
+-------------------
+
+If you use SublimeLint for pyflakes checks, you can ignore some of the "undefined name xxx" errors (comes in handy if you work with post-processors, globals/builtins available only at runtime, etc.). You can control what names will be ignored with the user preference "pyflakes_ignore".
+
+Example:
+
+    "pyflakes_ignore":
+        [
+            "some_custom_builtin_o_mine",
+            "A_GLOBAL_CONSTANT"
+        ],

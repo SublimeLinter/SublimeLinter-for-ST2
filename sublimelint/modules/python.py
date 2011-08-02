@@ -98,7 +98,7 @@ class PythonError(pyflakes.messages.Message):
         self.text = text
 
 
-def pyflakes_check(codeString, filename):
+def pyflakes_check(codeString, filename, ignore=None):
     try:
         tree = compile(codeString, filename, "exec", _ast.PyCF_ONLY_AST)
     except (SyntaxError, IndentationError), value:
@@ -131,7 +131,12 @@ def pyflakes_check(codeString, filename):
         return [PythonError(filename, 0, e.args[0])]
     else:
         # Okay, it's syntactically valid.  Now check it.
+        if ignore is not None:
+            old_magic_globals = pyflakes._MAGIC_GLOBALS
+            pyflakes._MAGIC_GLOBALS += ignore
         w = pyflakes.Checker(tree, filename)
+        if ignore is not None:
+            pyflakes._MAGIC_GLOBALS = old_magic_globals
         return w.messages
 
 
@@ -249,7 +254,8 @@ def run(code, view, filename='untitled'):
     errors = []
     if view.settings().get("pep8", True):
         errors.extend(pep8_check(code, filename, ignore=view.settings().get('pep8_ignore', [])))
-    errors.extend(pyflakes_check(code, filename))
+    pyflakes_ignore = view.settings().get('pyflakes_ignore', None)
+    errors.extend(pyflakes_check(code, filename, pyflakes_ignore))
     errors.sort(lambda a, b: cmp(a.lineno, b.lineno))
 
     for error in errors:
