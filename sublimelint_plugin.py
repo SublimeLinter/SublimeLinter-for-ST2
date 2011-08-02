@@ -37,7 +37,7 @@ can be quickly located.
 
 To enable a background linter to run by default
 (provided one exists for the language/syntax the file being viewed), set
-the user preference "sublimelint" to true.   If you find that this slows
+the user preference "sublimelint" to true. If you find that this slows
 down the UI too much, you can unset this user preference (or set it to
 false) and use the special commands (described below) to run it only
 on demand.
@@ -46,10 +46,22 @@ When an "error" is highlighted by the linter, putting the cursor on the
 offending line will result in the error message being displayed on the
 status bar.
 
+You can quickly move to the next/previous lint error with the following
+key equivalents:
+
+OS X
+next: ctrl+super+e
+prev: ctrl+super+shift+e
+
+Linux, Windows
+next: ctrl+alt+e
+prev: ctrl+alt+shift+e
+
+By default the search will wrap. You can turn wrapping off by setting
+the setting "sublimelint_wrap_find" to false.
 
 Color: lint "errors"
 --------------------
-
 There are three types of "errors" flagged by sublime lint: illegal,
 violation, and warning. For each type, SublimeLint will indicate the offending
 line and the character position at which the error occurred on the line.
@@ -575,3 +587,107 @@ class BackgroundLinter(sublime_plugin.EventListener):
     def on_selection_modified(self, view):
         delay_queue(1000)  # on movement, delay queue (to make movement responsive)
         update_statusbar(view)
+
+
+class FindLintErrorCommand(sublime_plugin.TextCommand):
+    # This command is just a superclass for other commands, it is never enabled
+    def is_enabled(self):
+        return False
+
+    def find_lint_error(self, forward):
+        regions = self.get_lint_regions()
+
+        if len(regions) == 0:
+            sublime.error_message('No lint errors.')
+            return
+
+        selected = self.view.sel()
+        point = selected[0].begin() if forward else selected[-1].end()
+        regionToSelect = None
+
+        # If going forward, find the first region beginning after the point.
+        # If going backward, find the first region ending before the point.
+        # If nothing is found in the given direction, wrap to the first/last region.
+        if forward:
+            regions.sort(key=lambda x: x.a)
+
+            for index, region in enumerate(regions):
+                if point < region.begin():
+                    regionToSelect = region
+                    break
+        else:
+            regions.sort(key=lambda x: x.a, reverse=True)
+
+            for index, region in enumerate(regions):
+                if point > region.end():
+                    regionToSelect = region
+                    break
+
+        # If there is only one error line and the cursor is in that line, we cannot move.
+        # Otherwise wrap to the first/last error line unless settings disallow that.
+        if regionToSelect is None and (len(regions) > 1 or not regions[0].contains(point)):
+            if self.view.settings().get('sublimelint_wrap_find', True):
+                regionToSelect = regions[0]
+
+        if regionToSelect is not None:
+            selected.clear()
+
+            # Find the first underline region within the region to select.
+            # If there are none, put the cursor at the beginning of the line.
+            underlineRegion = self.find_underline_within(regionToSelect)
+
+            if underlineRegion is None:
+                underlineRegion = sublime.Region(regionToSelect.begin(), regionToSelect.begin())
+
+            selected.add(underlineRegion)
+            self.view.show(underlineRegion, True)
+        else:
+            sublime.error_message('No {0} lint errors.'.format('next' if forward else 'previous'))
+
+    def get_lint_regions(self):
+        regions = self.view.get_regions('lint-outlines-illegal')
+        regions.extend(self.view.get_regions('lint-outlines-violation'))
+        regions.extend(self.view.get_regions('lint-outlines-warning'))
+        return regions
+
+    def find_underline_within(self, region):
+        underlines = self.view.get_regions('lint-underline-illegal')
+        underlines.extend(self.view.get_regions('lint-underline-violation'))
+        underlines.extend(self.view.get_regions('lint-underline-warning'))
+        underlines.sort(key=lambda x: x.a)
+
+        for underline in underlines:
+            if region.contains(underline):
+                return underline
+
+        return None
+
+
+class FindNextLintErrorCommand(FindLintErrorCommand):
+    @help_collector
+    def run(self, edit):
+        '''* view.run_command("find_next_lint_error")
+        Move the cursor to the next lint error in the current view.
+        The search will wrap to the top unless the sublimelint_wrap_find
+        setting is set to false.
+        '''
+        self.find_lint_error(forward=True)
+
+    # The superclass is disabled, be sure to enable this
+    def is_enabled(self):
+        return True
+
+
+class FindPreviousLintErrorCommand(FindLintErrorCommand):
+    @help_collector
+    def run(self, edit):
+        '''* view.run_command("find_previous_lint_error")
+        Move the cursor to the previous lint error in the current view.
+        The search will wrap to the bottom unless the sublimelint_wrap_find
+        setting is set to false.
+        '''
+        self.find_lint_error(forward=False)
+
+    # The superclass is disabled, be sure to enable this
+    def is_enabled(self):
+        return True
