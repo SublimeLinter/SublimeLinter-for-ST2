@@ -83,6 +83,9 @@ to true, in which case lines that have errors will be colored with the backgroun
 and foreground color of the "sublime.<type>" theme style. Unless you have defined
 those styles, this setting should be left false.
 
+You may also mark lines with errors by putting an "x" in the gutter by setting
+the "sublimelint_gutter_marks" setting to true.
+
 To customize the colors used for highlighting errors and user notes, add the following
 to your theme (adapting the color to your liking):
         <dict>
@@ -239,6 +242,7 @@ def add_lint_marks(view, lines, error_underlines, violation_underlines, warning_
         view.add_regions('lint-underline-illegal', error_underlines, 'invalid.illegal', sublime.DRAW_EMPTY_AS_OVERWRITE)
     if lines:
         fill_outlines = view.settings().get('sublimelint_fill_outlines', False)
+        gutter_mark = 'cross' if view.settings().get('sublimelint_gutter_marks', False) else ''
         outlines = {'warning': [], 'violation': [], 'illegal': []}
         for line in lines:
             if line in ERRORS[vid]:
@@ -253,7 +257,7 @@ def add_lint_marks(view, lines, error_underlines, violation_underlines, warning_
                     'lint-outlines-{0}'.format(lint_type),
                     outlines[lint_type],
                     'sublimelint.{0}'.format(lint_type),
-                    'cross'
+                    gutter_mark
                 ]
                 if not fill_outlines:
                     args.append(sublime.DRAW_OUTLINED)
