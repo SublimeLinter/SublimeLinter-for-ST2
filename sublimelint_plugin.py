@@ -42,6 +42,9 @@ down the UI too much, you can unset this user preference (or set it to
 false) and use the special commands (described below) to run it only
 on demand.
 
+You can disable linting specific languages by adding their names to the settings
+array "sublimelint_disable".
+
 When an "error" is highlighted by the linter, putting the cursor on the
 offending line will result in the error message being displayed on the
 status bar.
@@ -277,8 +280,10 @@ def erase_lint_marks(view):
 def select_linter(view):
     '''selects the appropriate linter to use based on language in
        current view'''
+    disable = view.settings().get('sublimelint_disable')
+
     for language in LINTERS:
-        if language in view.settings().get("syntax"):
+        if language in view.settings().get("syntax") and language not in disable:
             return LINTERS[language]
     return None
 

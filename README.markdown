@@ -9,6 +9,7 @@ Supports the following languages:
 * PHP - syntax checking via "php -l"
 * Perl - syntax+deprecation checking via "perl -c"
 * Ruby - syntax checking via "ruby -wc"
+* Objective-J - lint via built-in capp_lint
 
 Installing
 -----
@@ -47,6 +48,17 @@ Note that the linter normally works in a background thread and is constantly ref
 view.run_command("run_linter"), "LINTER") where "LINTER" is one of "Python", "PHP" or "pylint".
 4. If you run a linter via a commmand as in 3. above, the realtime linter is automatically disabled. To reset to its previous state (on or off) AND to clear all visible "errors", you use the command
 view.run_command("reset_linter").
+
+Disabling Languages
+-------------------
+
+If you want to disable linting for specific languages, add their names to the file settings array "sublimelint_disable".
+For example, to disable Perl linting:
+
+    "sublimelint_disable":
+        [
+            "Perl"
+        ],
 
 Python and PEP8
 ---------------
