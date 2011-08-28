@@ -60,6 +60,17 @@ For example, to disable Perl linting:
             "Perl"
         ],
 
+List of languages to put in the above array to disable its linter:
+
+PHP
+Python
+JavaScript
+pylint
+Perl
+Objective-J
+Ruby
+annotations
+
 Python and PEP8
 ---------------
 
