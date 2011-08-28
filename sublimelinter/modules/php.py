@@ -16,9 +16,8 @@ def check(codeString, filename):
                                 stdout=subprocess.PIPE,
                                 startupinfo=info)
 
-    plainText = codeString.encode("ascii", 'ignore')
     try:
-        result = process.communicate(plainText)[0]
+        result = process.communicate(codeString)[0]
     except:
         return False
     finally:
