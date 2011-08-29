@@ -4,6 +4,9 @@ import subprocess
 import os
 import sublime
 
+# Enforce that /usr/local/bin is avaliable in PATH
+os.environ['PATH'] = "/usr/local/bin:" + os.environ['PATH']
+
 
 def check(codeString, filename):
     info = None
@@ -12,7 +15,7 @@ def check(codeString, filename):
         info.dwFlags |= subprocess.STARTF_USESHOWWINDOW
         info.wShowWindow = subprocess.SW_HIDE
 
-    process = subprocess.Popen(('jshint', filename),
+    process = process = subprocess.Popen(['jshint', filename, '--config', '~/.jshintrc'],
                                 stdin=subprocess.PIPE,
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.STDOUT,
