@@ -595,13 +595,18 @@ class BackgroundLinter(sublime_plugin.EventListener):
         self.lastSelectedLineNo = -1
 
     def on_modified(self, view):
+        if view.settings().get('repl'):
+            return
         queue_linter(view)
-        return
 
     def on_load(self, view):
+        if view.settings().get('repl'):
+            return
         background_run(select_linter(view), view)
 
     def on_post_save(self, view):
+        if view.settings().get('repl'):
+            return
         for name, module in LINTERS.items():
             if module.__file__ == view.file_name():
                 print 'SublimeLinter - Reloading language:', module.language
@@ -610,6 +615,8 @@ class BackgroundLinter(sublime_plugin.EventListener):
         queue_linter(view)
 
     def on_selection_modified(self, view):
+        if view.settings().get('repl'):
+            return
         delay_queue(1000)  # on movement, delay queue (to make movement responsive)
 
         # We only display errors in the status bar for the last line in the current selection.
