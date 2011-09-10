@@ -258,8 +258,13 @@ def run(code, view, filename='untitled'):
     errors = []
     if view.settings().get("pep8", True):
         errors.extend(pep8_check(code, filename, ignore=view.settings().get('pep8_ignore', [])))
+
     pyflakes_ignore = view.settings().get('pyflakes_ignore', None)
-    errors.extend(pyflakes_check(code, filename, pyflakes_ignore))
+    pyflakes_disabled = view.settings().get('pyflakes_disabled', False)
+
+    if not pyflakes_disabled:
+        errors.extend(pyflakes_check(code, filename, pyflakes_ignore))
+
     errors.sort(lambda a, b: cmp(a.lineno, b.lineno))
 
     for error in errors:
