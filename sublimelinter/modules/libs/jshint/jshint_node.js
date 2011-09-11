@@ -3,15 +3,16 @@
 /*
     Created by Aparajita Fishman  (https://github.com/aparajita)
 
-    This code is adapted from the node.js jshint module to work with stdin instead of a file.
+    This code is adapted from the node.js jshint module to work with stdin instead of a file,
+    and to take jshint options from the command line rather than a file.
 
     ** Licensed Under **
 
     The MIT License
     http://www.opensource.org/licenses/mit-license.php
 
-    usage: node /path/to/jshint_wrapper.js
-*/
+    usage: node /path/to/jshint_wrapper.js "{option1:true,option2:false}"
+    */
 
 var _fs = require('fs'),
     _sys = require('sys'),
@@ -26,44 +27,9 @@ function _removeJsComments(str) {
     return str;
 }
 
-function _loadAndParseConfig(filePath) {
-    var config = {},
-        fileContent;
-    try {
-        if (_path.existsSync(filePath)) {
-            fileContent = _fs.readFileSync(filePath, "utf-8");
-            config = JSON.parse(_removeJsComments(fileContent));
-        }
-    } catch (e) {
-        _sys.puts("Error opening config file " + filePath + '\n');
-        _sys.puts(e + "\n");
-        process.exit(1);
-    }
-    return config;
-}
-
-function _mergeConfigs(homerc, cwdrc) {
-    var homeConfig = _loadAndParseConfig(homerc),
-        cwdConfig = _loadAndParseConfig(cwdrc),
-        prop;
-
-    for (prop in cwdConfig) {
-        if (typeof prop === 'string') {
-            if (prop === 'predef') {
-                homeConfig.predef = (homeConfig.predef || []).concat(cwdConfig.predef);
-            } else {
-                homeConfig[prop] = cwdConfig[prop];
-            }
-        }
-    }
-    return homeConfig;
-}
-
 function hint() {
-    var defaultConfig = _path.join(process.env.HOME, '.jshintrc'),
-        projectConfig = _path.join(process.cwd(), '.jshintrc'),
-        config = _mergeConfigs(defaultConfig, projectConfig),
-        code = '';
+    var code = '',
+        config = JSON.parse(process.argv[2]);
 
     process.stdin.resume();
     process.stdin.setEncoding('utf8');
