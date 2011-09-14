@@ -35,11 +35,12 @@ def is_enabled():
         return (False, unicode(ex))
 
 
-def check(codeString, filename):
+def check(codeString, filename, view):
     path = jshint_path()
+    jshint_opts = json.dumps(view.settings().get('jshint_opts', '{}'))
 
     if os.path.exists(jsc_path):
-        process = subprocess.Popen((jsc_path, os.path.join(path, 'jshint_jsc.js'), '--', str(codeString.count('\n')), '{}', path + os.path.sep),
+        process = subprocess.Popen((jsc_path, os.path.join(path, 'jshint_jsc.js'), '--', str(codeString.count('\n')), jshint_opts, path + os.path.sep),
                                     stdin=subprocess.PIPE,
                                     stdout=subprocess.PIPE,
                                     stderr=subprocess.STDOUT,
@@ -70,7 +71,7 @@ def check(codeString, filename):
 def run(code, view, filename='untitled'):
 
     try:
-        errors = check(code, filename)
+        errors = check(code, filename, view)
     except OSError as (errno, message):
         print 'SublimeLinter: error executing linter: {0}'.format(message)
         errors = []
