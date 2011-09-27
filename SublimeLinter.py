@@ -565,7 +565,7 @@ class FindLintErrorCommand(sublime_plugin.TextCommand):
         regions = get_lint_regions(self.view)
 
         if len(regions) == 0:
-            sublime.error_message('No lint errors.')
+            sublime.status_message('No lint errors.')
             return
 
         selected = self.view.sel()
@@ -655,7 +655,7 @@ class SublimelinterCommand(sublime_plugin.WindowCommand):
             if regions:
                 sublime.error_message('{0} lint error{1}.'.format(len(regions), 's' if len(regions) != 1 else ''))
             else:
-                sublime.error_message('No lint errors.')
+                sublime.status_message('No lint errors.')
         else:
             syntax = syntax_name(view)
             sublime.error_message('No linter for the syntax "{0}"'.format(syntax))
