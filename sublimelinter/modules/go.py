@@ -5,10 +5,11 @@ import os
 import subprocess
 import sublime
 
-from module_utils import get_startupinfo
+from module_utils import get_executable, get_startupinfo
 
 __all__ = ['run', 'language']
 language = 'Go'
+linter_executable = 'gomake'
 description =\
 '''* view.run_command("lint", "Go")
         Turns background linter off and runs the Go linter
@@ -17,11 +18,14 @@ description =\
 
 
 def is_enabled():
+    global linter_executable
+    linter_executable = get_executable('go', 'gomake')
+
     try:
-        subprocess.call(['gomake', '-v'], startupinfo=get_startupinfo())
-        return (True, 'using gomake')
+        subprocess.call([linter_executable, '-v'], startupinfo=get_startupinfo())
+        return (True, 'using {0}'.format(linter_executable))
     except OSError:
-        return (False, 'gomake is required')
+        return (False, '{0} is required'.format(linter_executable))
     except Exception as ex:
         return (False, unicode(ex))
 
@@ -29,9 +33,7 @@ def is_enabled():
 def check(code, filename):
     path = os.path.dirname(filename)
 
-    print path
-
-    process = subprocess.Popen(['gomake', '-C', path],
+    process = subprocess.Popen([linter_executable, '-C', path],
                                 stdin=subprocess.PIPE,
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE,
