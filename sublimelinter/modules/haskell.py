@@ -1,4 +1,4 @@
-# ruby.py - sublimelint package for checking ruby files
+# haskell.py - sublimelint package for checking haskell files
 
 import subprocess
 import sublime
