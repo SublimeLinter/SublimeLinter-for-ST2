@@ -82,5 +82,8 @@
     ],
 
     // Objective-J: if true, non-ascii characters are flagged as an error.
-    "sublimelinter_objj_check_ascii": false
+    "sublimelinter_objj_check_ascii": false,
+    
+	// Show the "No lint errors" message in a "dialog" or the "status_bar"
+	"sublimelinter_no_errors_msg_target": "dialog" 
 }
