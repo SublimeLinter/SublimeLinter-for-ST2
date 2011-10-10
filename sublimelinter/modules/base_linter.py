@@ -138,14 +138,15 @@ class BaseLinter(object):
 
     def executable_check(self, view, code, filename):
         args = [self.executable]
+        tmpfile = None
 
         if self.input_method == INPUT_METHOD_STDIN:
             args.extend(self._get_lint_args(view, code, filename))
 
         elif self.input_method == INPUT_METHOD_TEMP_FILE:
-            with tempfile.NamedTemporaryFile(mode='r+', delete=False) as tmpfile:
-                tmpfile.write(code)
-                tmpfile.close()  # windows cannot reopen an open file
+            tmpfile = tempfile.NamedTemporaryFile(mode='r+', delete=False)
+            tmpfile.write(code)
+            tmpfile.close()  # windows cannot reopen an open file
 
             args.extend(self._get_lint_args(view, code, tmpfile.name))
             code = ''
@@ -163,6 +164,8 @@ class BaseLinter(object):
                                    stderr=subprocess.STDOUT,
                                    startupinfo=self.get_startupinfo())
         result = process.communicate(code)[0]
+        if tmpfile and os.path.exists(tmpfile.name):
+            os.remove(tmpfile.name)
         return result.strip()
 
     def parse_errors(self, view, errors, lines, errorUnderlines, violationUnderlines, warningUnderlines, errorMessages, violationMessages, warningMessages):
