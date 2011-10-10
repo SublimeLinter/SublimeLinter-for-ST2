@@ -13,6 +13,7 @@ CONFIG = {
     'executable': 'escript',
     'lint_args': (eflymake, "{filename}"),
     'input_method': INPUT_METHOD_TEMP_FILE,
+    'tempfile_kwargs': {'suffix': ".erl"},
     'test_existence_args': ' ',
 }
 
@@ -25,3 +26,8 @@ class Linter(BaseLinter):
             if match:
                 error, line = match.group('error'), match.group('line')
                 self.add_message(int(line), lines, error, errorMessages)
+
+    def executable_check(self, view, code, filename):
+        result = super(Linter, self).executable_check(view, code, filename)
+        print result
+        return result
