@@ -200,9 +200,16 @@ Edit your < projectname >.sublime-project file and add
         "SublimeLinter":
         {
             "linter_args":
-            [
-                // "some params"
-            ]
+            {
+                "python":
+                [
+                    // args passed to python linter in this project
+                ],
+                "erlang":
+                [
+                    // args passed to erlang linter in this project
+                ]   
+            }
         }
     }
 

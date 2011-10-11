@@ -63,7 +63,7 @@ CONFIG = {
 
     # When using INPUT_METHOD_TEMP_FILE you may want to pass additional parameters to the tempfile
     # such as suffix as some linters may require the file to have valid extension.
-    'tempfile_kwargs': {}
+    'tempfile_suffix': ""
 }
 
 
@@ -84,7 +84,7 @@ class BaseLinter(object):
         self.enabled = False
         self.executable = config.get('executable', None)
         self.test_existence_args = config.get('test_existence_args', ('-v',))
-        self.tempfile_kwargs = config.get('tempfile_kwargs', {})
+        self.tempfile_suffix = config.get('tempfile_suffix', "")
 
         if isinstance(self.test_existence_args, basestring):
             self.test_existence_args = (self.test_existence_args,)
@@ -138,9 +138,10 @@ class BaseLinter(object):
         else:
             args = [arg.format(filename=filename) for arg in self.lint_args]
             sl_settings = view.settings().get("SublimeLinter")
-            if isinstance(sl_settings, dict):
-                project_args = sl_settings.get("linter_args", [])
-                args.extend(project_args)
+            if sl_settings:
+                project_args = sl_settings.get("linter_args", dict())
+                language_args = project_args[self.language]
+                args.extend(language_args)
             return args
 
     def built_in_check(self, view, code, filename):
@@ -154,7 +155,7 @@ class BaseLinter(object):
             args.extend(self._get_lint_args(view, code, filename))
 
         elif self.input_method == INPUT_METHOD_TEMP_FILE:
-            tmpfile = tempfile.NamedTemporaryFile(mode='r+', delete=False, **self.tempfile_kwargs)
+            tmpfile = tempfile.NamedTemporaryFile(mode='r+', delete=False, suffix=self.tempfile_suffix)
             tmpfile.write(code)
             tmpfile.close()  # windows cannot reopen an open file
 

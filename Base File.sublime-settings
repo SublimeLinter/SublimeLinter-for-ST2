@@ -55,7 +55,7 @@
         errors are erased when the file is modified, since the assumption is
         you don't want to see errors while you type.
     */
-    "sublimelinter_delay": 1,
+    "sublimelinter_delay": 0,
 
     // If true, lines with errors or warnings will be filled in with the outline color.
     "sublimelinter_fill_outlines": false,

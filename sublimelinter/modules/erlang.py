@@ -1,5 +1,23 @@
 # -*- coding: utf-8 -*-
 # erlang.py - sublimelint package for checking erlang files
+# Note: Use project file to add any additional paths you want
+#       to add to the compiler.
+#       ie.
+#       "settings":
+#       {
+#               "SublimeLinter":
+#               {
+#                   "linter_args":
+#                   {
+#                       "erlang":
+#                       [
+#                           "/Users/joe/projects/myproj/libs/libA/ebin",
+#                           "/Users/joe/projects/myproj/libs/libB/ebin",
+#                           "/Users/joe/projects/myproj/deps/depA/ebin"
+#                       ]
+#                   }
+#               }
+#       }
 
 import os
 import re
@@ -13,7 +31,7 @@ CONFIG = {
     'executable': 'escript',
     'lint_args': (eflymake, "{filename}"),
     'input_method': INPUT_METHOD_TEMP_FILE,
-    'tempfile_kwargs': {'suffix': ".erl"},
+    'tempfile_suffix': ".erl",
     'test_existence_args': ' ',
 }
 
