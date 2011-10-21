@@ -1,0 +1,13 @@
+#!/usr/bin/env escript
+-export([main/1]).
+
+main([File_Name|Paths]) ->
+	add_paths(Paths),
+    compile:file(File_Name, [warn_obsolete_guard, warn_unused_import,
+                                           warn_shadow_vars, warn_export_vars,
+                                           strong_validation, report]).
+add_paths([]) ->
+	ok;
+add_paths([Path|Paths]) ->
+	code:add_patha(Path),
+	add_paths(Paths).

@@ -192,6 +192,27 @@ to your theme (adapting the color to your liking):
         </dict>
     </dict>
 
+You can now also add extra parameters to linter per project file.
+Edit your < projectname >.sublime-project file and add
+
+    "settings":
+    {
+        "SublimeLinter":
+        {
+            "linter_args":
+            {
+                "python":
+                [
+                    // args passed to python linter in this project
+                ],
+                "erlang":
+                [
+                    // args passed to erlang linter in this project
+                ]   
+            }
+        }
+    }
+
 Troubleshooting
 ---------------
 If a linter does not seem to be working, you can check the ST2 console to see if it was enabled. When SublimeLinter is loaded, you will see messages in the console like this:

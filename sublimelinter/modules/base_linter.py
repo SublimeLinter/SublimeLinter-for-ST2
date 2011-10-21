@@ -59,7 +59,11 @@ CONFIG = {
     'lint_args': None,
 
     # If an external executable is being used, the method used to pass input to it. Defaults to STDIN.
-    'input_method': INPUT_METHOD_STDIN
+    'input_method': INPUT_METHOD_STDIN,
+
+    # When using INPUT_METHOD_TEMP_FILE you may want to pass additional parameters to the tempfile
+    # such as suffix as some linters may require the file to have valid extension.
+    'tempfile_suffix': ""
 }
 
 
@@ -80,6 +84,7 @@ class BaseLinter(object):
         self.enabled = False
         self.executable = config.get('executable', None)
         self.test_existence_args = config.get('test_existence_args', ('-v',))
+        self.tempfile_suffix = config.get('tempfile_suffix', "")
 
         if isinstance(self.test_existence_args, basestring):
             self.test_existence_args = (self.test_existence_args,)
@@ -131,21 +136,28 @@ class BaseLinter(object):
         if hasattr(self, 'get_lint_args'):
             return self.get_lint_args(view, code, filename) or ()
         else:
-            return [arg.format(filename=filename) for arg in self.lint_args]
+            args = [arg.format(filename=filename) for arg in self.lint_args]
+            sl_settings = view.settings().get("SublimeLinter")
+            if sl_settings:
+                project_args = sl_settings.get("linter_args", dict())
+                language_args = project_args[self.language]
+                args.extend(language_args)
+            return args
 
     def built_in_check(self, view, code, filename):
         return ''
 
     def executable_check(self, view, code, filename):
         args = [self.executable]
+        tmpfile = None
 
         if self.input_method == INPUT_METHOD_STDIN:
             args.extend(self._get_lint_args(view, code, filename))
 
         elif self.input_method == INPUT_METHOD_TEMP_FILE:
-            with tempfile.NamedTemporaryFile(mode='r+', delete=False) as tmpfile:
-                tmpfile.write(code)
-                tmpfile.close()  # windows cannot reopen an open file
+            tmpfile = tempfile.NamedTemporaryFile(mode='r+', delete=False, suffix=self.tempfile_suffix)
+            tmpfile.write(code)
+            tmpfile.close()  # windows cannot reopen an open file
 
             args.extend(self._get_lint_args(view, code, tmpfile.name))
             code = ''
@@ -163,6 +175,11 @@ class BaseLinter(object):
                                    stderr=subprocess.STDOUT,
                                    startupinfo=self.get_startupinfo())
         result = process.communicate(code)[0]
+
+        # remove the leftover temp file
+        if tmpfile and os.path.exists(tmpfile.name):
+            os.remove(tmpfile.name)
+
         return result.strip()
 
     def parse_errors(self, view, errors, lines, errorUnderlines, violationUnderlines, warningUnderlines, errorMessages, violationMessages, warningMessages):
