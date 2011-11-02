@@ -65,6 +65,9 @@
     // If true, the find next/previous error commands will wrap.
     "sublimelinter_wrap_find": true,
 
+    // If true, SublimeLinter will highligt annotations (e.g. TODO).
+    "sublimelinter_notes": true,
+
     // jshint: options for linting JavaScript. See http://jshint.com/#docs for more info.
     // By deault, eval is allowed.
     "jshint_options":
