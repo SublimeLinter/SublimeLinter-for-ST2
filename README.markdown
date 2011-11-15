@@ -18,7 +18,7 @@ SublimeLinter has built in linters for the following languages:
 
 Installing
 ----------
-**With the Package Control plugin:** The easiest way to install SublimeLinter is through Package Control, which can be found at this site: [http://wbond.net/sublime\_packages/package\_control](http://wbond.net/sublime\_packages/package\_control)
+**With the Package Control plugin:** The easiest way to install SublimeLinter is through Package Control, which can be found at this site: [http://wbond.net/sublime_packages/package_control](http://wbond.net/sublime_packages/package_control)
 
 Once you install Package Control, restart ST2 and bring up the Command Palette (Command+Shift+p on OS X, Control+Shift+p on Linux/Windows). Select "Package Control: Install Package", wait while Package Control fetches the latest package list, then select SublimeLinter when the list appears. The advantage of using this method is that Package Control will automatically keep SublimeLinter up to date with the latest version.
 
