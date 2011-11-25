@@ -2,12 +2,13 @@
 # coffeescript.py - sublimelint package for checking coffee files
 
 import re
+import os
 
 from base_linter import BaseLinter
 
 CONFIG = {
     'language': 'coffeescript',
-    'executable': 'coffee',
+    'executable': 'coffee.cmd' if os.name == 'nt' else 'coffee',
     'lint_args': '-l'
 }
 
