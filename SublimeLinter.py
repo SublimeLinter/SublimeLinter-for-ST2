@@ -31,6 +31,12 @@ DELAYS = (
     (1600, (1600, 3000)),
 )
 
+MARKS = {
+    "violation": ("", "dot"),
+    "warning": ("", "dot"),
+    "illegal": ("", "circle"),
+}
+
 
 def get_delay(t, view):
     delay = 0
@@ -103,7 +109,8 @@ def add_lint_marks(view, lines, error_underlines, violation_underlines, warning_
         view.add_regions('lint-underline-illegal', error_underlines, 'invalid.illegal', sublime.DRAW_EMPTY_AS_OVERWRITE)
     if lines:
         fill_outlines = view.settings().get('sublimelinter_fill_outlines', False)
-        gutter_mark = 'cross' if view.settings().get('sublimelinter_gutter_marks', False) else ''
+        gutter_mark_enabled = True if view.settings().get('sublimelinter_gutter_marks', False) else False
+
         outlines = {'warning': [], 'violation': [], 'illegal': []}
 
         for line in lines:
@@ -120,7 +127,7 @@ def add_lint_marks(view, lines, error_underlines, violation_underlines, warning_
                     'lint-outlines-{0}'.format(lint_type),
                     outlines[lint_type],
                     'sublimelinter.{0}'.format(lint_type),
-                    gutter_mark
+                    MARKS[lint_type][gutter_mark_enabled]
                 ]
                 if not fill_outlines:
                     args.append(sublime.DRAW_OUTLINED)
