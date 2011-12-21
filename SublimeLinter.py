@@ -72,16 +72,16 @@ def update_statusbar(view):
         view.erase_status('Linter')
 
 
-def background_run(linter, view):
+def background_run(linter, view, **kwargs):
     '''run a linter on a given view if settings is set appropriately'''
     if linter:
-        run_once(linter, view)
+        run_once(linter, view, **kwargs)
 
     if view.settings().get('sublimelinter_notes'):
         highlight_notes(view)
 
 
-def run_once(linter, view):
+def run_once(linter, view, event=None, **kwargs):
     '''run a linter on a given view regardless of user setting'''
     if linter == LINTERS.get('annotations', None):
         highlight_notes(view)
@@ -95,6 +95,42 @@ def run_once(linter, view):
     update_statusbar(view)
     end = time.time()
     TIMES[vid] = (end - start) * 1000  # Keep how long it took to lint
+
+    if event == "on_post_save" and view.settings().get('sublimelinter_show_popup'):
+        show_popup(view, text, lines, error_underlines, violation_underlines, warning_underlines)
+
+
+def show_popup(view, text="", lines=set(), error_underlines=[], violation_underlines=[], warning_underlines=[]):
+    #TODO: Code re-use and put cursor at the exact error, not just head of line
+    view = view
+    vid = view.id()
+    window = view.window()
+
+    text_lines = text.split("\n")
+
+    # Messy way of creating the list to show in the pop-up. Open to suggestions on better design or formatting
+    l = []
+    l.extend([[str(k + 1) + ": " + v_, text_lines[k]] for k, v in VIOLATIONS[vid].iteritems() for v_ in v])
+    l.extend([[str(k + 1) + ": " + v_, text_lines[k]] for k, v in ERRORS[vid].iteritems() for v_ in v])
+    l.extend([[str(k + 1) + ": " + v_, text_lines[k]] for k, v in WARNINGS[vid].iteritems() for v_ in v])
+
+    # Sort by line number
+    the_list = sorted(l)
+
+    def jump(arg):
+        if arg == -1:
+            return
+        l = the_list[arg][0]
+        print l
+        line = int(l.split(":")[0]) - 1
+
+        pt = view.text_point(line, 0)
+
+        view.sel().clear()
+        view.sel().add(sublime.Region(pt))
+
+        view.show(pt)
+    window.show_quick_panel(the_list, jump)
 
 
 def add_lint_marks(view, lines, error_underlines, violation_underlines, warning_underlines):
@@ -517,14 +553,15 @@ class BackgroundLinter(sublime_plugin.EventListener):
     def on_load(self, view):
         if view.is_scratch() or view.settings().get('sublimelinter') == False:
             return
-        background_run(select_linter(view), view)
+        background_run(select_linter(view), view, event="on_load")
 
     def on_post_save(self, view):
         if view.is_scratch() or view.settings().get('sublimelinter') == False:
             return
 
         reload_view_module(view)
-        background_run(select_linter(view), view)
+        linter = select_linter(view)
+        background_run(linter, view, event="on_post_save")
 
     def on_selection_modified(self, view):
         if view.is_scratch():
