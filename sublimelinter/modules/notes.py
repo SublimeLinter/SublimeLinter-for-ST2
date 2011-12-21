@@ -30,7 +30,7 @@ class Linter(BaseLinter):
         '''selects the list of annotations to use'''
         annotations = view.settings().get("annotations")
 
-        if annotations is None:
+        if annotations is None or len(annotations) == 0:
             return self.DEFAULT_NOTES
         else:
             return annotations
@@ -73,6 +73,14 @@ class Linter(BaseLinter):
         ''' finds all occurences of "string" in "text" and notes their positions
             as a sublime Region
         '''
+        # Annotation is a specific comment. According to PEP8 each comment should start with a '#' and a single space.
+        # Therefire, each annotation consists of a '#' followed by a single space and a specific keyword like 'TODO'.
+        # So, let's highlight only those annotation keywords, which is a part of annotation statements.
+        #
+        # Defining a annotation statement prefix for convenience
+        prefix = '# '
+        string = prefix + string
+
         found = []
         length = len(string)
         start = 0
@@ -81,7 +89,9 @@ class Linter(BaseLinter):
             start = text.find(string, start)
 
             if start != -1:
-                end = start + length
+                # Adjusting boundaries in order to highlight only annotation keyword
+                start = start + len(prefix)
+                end = start + length - len(prefix)
                 found.append(sublime.Region(start, end))
                 start = end
             else:
