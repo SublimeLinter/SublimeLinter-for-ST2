@@ -35,9 +35,7 @@ class Linter(BaseLinter):
         path = self.jshint_path()
 
         if self.jshint_options is None:
-            jshint_options = view.settings().get("jshint_options") or {}
-            jshint_options['indent'] = 1
-            self.jshint_options = json.dumps(jshint_options)
+            self.jshint_options = json.dumps(view.settings().get("jshint_options") or {})
 
         if self.use_jsc:
             args = (os.path.join(path, 'jshint_jsc.js'), '--', str(code.count('\n')), self.jshint_options, path + os.path.sep)
