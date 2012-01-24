@@ -80,6 +80,55 @@
         "sub": true
     },
 
+    "csslint_options":
+    {
+        /* 
+         * Specify how the different CSSLint rules should be handled. Currently
+         * the only difference between warnings and errors is how they are reported
+         * when displayed on the Sublime Text status line. 
+         *
+         * Just comment out a rule name to disable it. A rule should appear in either
+         * warnings or errors but not both.
+         */
+
+        "warnings": 
+        [
+            "adjoining-classes",
+            "import",
+            "box-sizing",
+            "box-model",
+            "duplicate-background-images",
+            "compatible-vendor-prefixes",
+            "display-property-grouping",
+            "overqualified-elements",
+            "fallback-colors",
+            "duplicate-properties",
+            "empty-rules",
+            "errors",
+            "regex-selectors",
+            "gradients",
+            "font-sizes",
+            "font-faces",
+            "floats",
+            "important",
+            "outline-none",
+            "qualified-headings",
+            "rules-count",
+            "shorthand",
+            "text-indent",
+            "unique-headings",
+            "universal-selector",
+            "vendor-prefix",
+            "zero-units",
+            "ids",
+            "known-properties"
+        ],
+
+        "errors": 
+        [
+        ]
+    },
+
     // A list of pep8 error numbers to ignore. By default "line too long" errors are ignored.
     // The list of error codes is in this file: https://github.com/jcrocholl/pep8/blob/master/pep8.py.
     // Search for "Ennn:", where nnn is a 3-digit number.
