@@ -82,51 +82,42 @@
 
     "csslint_options":
     {
-        /* 
-         * Specify how the different CSSLint rules should be handled. Currently
-         * the only difference between warnings and errors is how they are reported
-         * when displayed on the Sublime Text status line. 
-         *
-         * Just comment out a rule name to disable it. A rule should appear in either
-         * warnings or errors but not both.
-         */
-
-        "warnings": 
-        [
-            "adjoining-classes",
-            "import",
-            "box-sizing",
-            "box-model",
-            "duplicate-background-images",
-            "compatible-vendor-prefixes",
-            "display-property-grouping",
-            "overqualified-elements",
-            "fallback-colors",
-            "duplicate-properties",
-            "empty-rules",
-            "errors",
-            "regex-selectors",
-            "gradients",
-            "font-sizes",
-            "font-faces",
-            "floats",
-            "important",
-            "outline-none",
-            "qualified-headings",
-            "rules-count",
-            "shorthand",
-            "text-indent",
-            "unique-headings",
-            "universal-selector",
-            "vendor-prefix",
-            "zero-units",
-            "ids",
-            "known-properties"
-        ],
-
-        "errors": 
-        [
-        ]
+        // Each rule can have three values: error|warning|false
+        // false => rule is disabled.
+        // All rules are enabled and warnings by default.
+        // Currently the only difference between warnings and errors is in the prefix of the message in the Sublime status bar.
+        "rules": 
+        {
+            "adjoining-classes": "warning",
+            "import": "warning",
+            "box-sizing": "warning",
+            "box-model": "warning",
+            "duplicate-background-images": "warning",
+            "compatible-vendor-prefixes": "warning",
+            "display-property-grouping": "warning",
+            "overqualified-elements": "warning",
+            "fallback-colors": "warning",
+            "duplicate-properties": "warning",
+            "empty-rules": "warning",
+            "errors": "warning",
+            "regex-selectors": "warning",
+            "gradients": "warning",
+            "font-sizes": "warning",
+            "font-faces": "warning",
+            "floats": "warning",
+            "important": "warning",
+            "outline-none": "warning",
+            "qualified-headings": "warning",
+            "rules-count": "warning",
+            "shorthand": "warning",
+            "text-indent": "warning",
+            "unique-headings": "warning",
+            "universal-selector": "warning",
+            "vendor-prefix": "warning",
+            "zero-units": "warning",
+            "ids": "warning",
+            "known-properties": "warning"
+        }
     },
 
     // A list of pep8 error numbers to ignore. By default "line too long" errors are ignored.

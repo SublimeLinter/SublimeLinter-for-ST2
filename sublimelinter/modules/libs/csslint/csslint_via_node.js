@@ -23,37 +23,29 @@ var _fs = require('fs'),
 function lint(code, config)
 {
     var results = [];
+    var ruleset = {};
 
-    var ruleset = {},
-        warnings = config.warnings || [],
-        errors = config.errors || [];
-
-    if (warnings){
-        warnings.forEach(function(value){
-            ruleset[value] = 1;
-        });
-    }
-
-    if (errors){
-        errors.forEach(function(value){
-            ruleset[value] = 2;
-        });
+    // rules that are 'false' will be ignored.
+    for (var ruleName in config['rules']) {
+        if (config['rules'][ruleName] === 'warning') {
+            ruleset[ruleName] = 1;
+        }
+        else if (config['rules'][ruleName] === 'error') {
+            ruleset[ruleName] = 2;
+        }
     }
     
     var report = _csslint.CSSLint.verify(code, ruleset);
 
-
     report.messages.forEach(function (message) {
         if (message) {
 
-            // message contains:
-            // strings:
-            // message.type // warning or error
+            // message.type // warning|error
             // message.line
             // message.col
             // message.message
-            // message.evidence // will require sanitizing as includes endlines
-            // message.rule // an object
+            // message.evidence // Requires sanitizing as it can include CR, LF 
+            // message.rule // The rule object 
             
             // We don't pass on the rollup messages
             if (message.rollup !== true) {

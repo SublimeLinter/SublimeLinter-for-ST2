@@ -48,6 +48,7 @@ class Linter(BaseLinter):
         return os.path.join(os.path.dirname(__file__), 'libs', 'csslint')
 
     def parse_errors(self, view, errors, lines, errorUnderlines, violationUnderlines, warningUnderlines, errorMessages, violationMessages, warningMessages):
+        # print errors
         errors = json.loads(errors.strip() or '[]')
 
         for error in errors:
