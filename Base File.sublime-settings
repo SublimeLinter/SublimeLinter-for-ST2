@@ -28,6 +28,7 @@
     */
     "sublimelinter_executable_map":
     {
+        "haskell": "/Users/dever/Library/haskell/bin/hlint"
     },
 
     /*
