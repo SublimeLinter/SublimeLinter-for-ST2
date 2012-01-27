@@ -1,25 +1,41 @@
 # -*- coding: utf-8 -*-
 # php.py - sublimelint package for checking php files
 
-import re
-import tempfile
+import os
+import platform
 
-from base_linter import BaseLinter, INPUT_METHOD_FILE, INPUT_METHOD_TEMP_FILE
+from re import match
+from commands import getstatusoutput
+from base_linter import BaseLinter, INPUT_METHOD_FILE
+
 
 CONFIG = {
     'language': 'haskell',
-    'executable': 'hlint',
     'input_method': INPUT_METHOD_FILE
-    #'lint_args': '{filename}'
 }
 
 
 class Linter(BaseLinter):
+    def get_executable(self, view):
+        _, hlint = getstatusoutput('which hlint')
+        if len(hlint) is 0:
+            osType = platform.system()
+            homeDir = os.environ['HOME']
+            if osType.startswith('Darwin'):  # OSX
+                if os.path.exists(homeDir + '/Library/Haskell/bin/hlint'):  # Haskell platform
+                    hlint = homeDir + '/Library/Haskell/bin/hlint'
+            # TODO: Should do for other variations on OSX and other OS.
+
+        if len(hlint) > 0:
+            return (True, hlint, 'hLint loaded')
+        else:  # Unknown system/install
+            return (False, False, 'hLint not found. (Only finds on system path, and on OSX w/Haskell Platform, please add to source)')
+
     def parse_errors(self, view, errors, lines, errorUnderlines, violationUnderlines, warningUnderlines, errorMessages, violationMessages, warningMessages):
         i = 0
         errorLines = errors.splitlines()
         while i < len(errorLines):
-            warning = re.match(r'^.+:(?P<line>\d+):(?P<col>\d+):.+:(?P<error>.+)', errorLines[i])
+            warning = match(r'^.+:(?P<line>\d+):(?P<col>\d+):.+:(?P<error>.+)', errorLines[i])
 
             if warning:
                 errorFound = warning.group('error')
@@ -28,11 +44,12 @@ class Linter(BaseLinter):
                 errorLength = 0
                 i += 2
 
-                while errorLines[i] != "Why not:":
+                while errorLines[i] != "Why not:":  # Zoidberg?
                     errorLength += len(errorLines[i].strip())
                     i += 1
 
                 self.add_message(errorLineNo, lines, errorFound, errorMessages)
+                lines.add(errorLineNo)
 
                 j = 0
                 while errorLength > 0:
@@ -42,6 +59,4 @@ class Linter(BaseLinter):
                     self.underline_range(view, errorLineNo + j, startOffset, warningUnderlines, underLineLength)
                     errorLength -= underLineLength
                     j += 1
-
-                lines.add(errorLineNo)
             i += 1
