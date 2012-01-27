@@ -97,6 +97,10 @@ class BaseLinter(object):
 
         if isinstance(self.lint_args, basestring):
             self.lint_args = (self.lint_args,)
+        
+        if self.input_method is not INPUT_METHOD_STDIN and self.lint_args is None:
+            self.lint_args = ('{filename}',)
+
 
     def check_enabled(self, view):
         if hasattr(self, 'get_executable'):
