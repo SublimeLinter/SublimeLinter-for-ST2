@@ -228,12 +228,13 @@ def erase_lint_marks(view):
 
 def get_lint_regions(view, reverse=False):
     vid = view.id()
+    regions = REGIONS[vid][:]
 
-    if not REGIONS[vid]:
-        return REGIONS[vid]
+    if not regions:
+        return regions
 
     # Each of these regions is one character, so transform it into the character points
-    points = sorted([region.begin() for region in REGIONS[vid]])
+    points = sorted([region.begin() for region in regions])
 
     # Now coalesce adjacent characters into a single region
     regions = []
@@ -270,9 +271,8 @@ def select_lint_region(view, region):
 
 
 def find_underline_within(view, region):
-    underlines = view.get_regions('lint-underline-illegal')
-    underlines.extend(view.get_regions('lint-underline-violation'))
-    underlines.extend(view.get_regions('lint-underline-warning'))
+    vid = view.id()
+    underlines = REGIONS[vid][:]
     underlines.sort(key=lambda x: x.begin())
 
     for underline in underlines:
