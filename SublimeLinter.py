@@ -16,6 +16,7 @@ ERRORS = {}      # error messages on given line obtained from linter; they are
                  # displayed in the status bar when cursor is on line with error
 VIOLATIONS = {}  # violation messages, they are displayed in the status bar
 WARNINGS = {}    # warning messages, they are displayed in the status bar
+REGIONS = {}     # regions related to each lint message
 TIMES = {}       # collects how long it took the linting to complete
 MOD_LOAD = Loader(os.getcwd(), LINTERS)  # utility to load (and reload
                  # if necessary) linter modules [useful when working on plugin]
@@ -100,6 +101,11 @@ def run_once(linter, view, event=None, **kwargs):
     start = time.time()
     text = view.substr(sublime.Region(0, view.size())).encode('utf-8')
     lines, error_underlines, violation_underlines, warning_underlines, ERRORS[vid], VIOLATIONS[vid], WARNINGS[vid] = linter.run(view, text, view.file_name() or '')
+
+    REGIONS[vid] = error_underlines
+    REGIONS[vid].extend(violation_underlines)
+    REGIONS[vid].extend(warning_underlines)
+
     add_lint_marks(view, lines, error_underlines, violation_underlines, warning_underlines)
     update_statusbar(view)
     end = time.time()
@@ -221,16 +227,13 @@ def erase_lint_marks(view):
 
 
 def get_lint_regions(view, reverse=False):
-    # First get all of the underlines, which includes every underlined character
-    regions = view.get_regions('lint-underline-illegal')
-    regions.extend(view.get_regions('lint-underline-violation'))
-    regions.extend(view.get_regions('lint-underline-warning'))
+    vid = view.id()
 
-    if not regions:
-        return regions
+    if not REGIONS[vid]:
+        return REGIONS[vid]
 
     # Each of these regions is one character, so transform it into the character points
-    points = sorted([region.begin() for region in regions])
+    points = sorted([region.begin() for region in REGIONS[vid]])
 
     # Now coalesce adjacent characters into a single region
     regions = []
