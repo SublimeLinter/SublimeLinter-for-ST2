@@ -42,7 +42,7 @@ The "Packages" directory is located at:
 
 * Linux::
 
-    ~/.Sublime Text 2/Packages/
+    ~/.config/sublime-text-2/Packages/
 
 * Windows::
 
