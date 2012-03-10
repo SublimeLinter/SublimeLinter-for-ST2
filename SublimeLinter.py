@@ -16,7 +16,7 @@ ERRORS = {}      # error messages on given line obtained from linter; they are
                  # displayed in the status bar when cursor is on line with error
 VIOLATIONS = {}  # violation messages, they are displayed in the status bar
 WARNINGS = {}    # warning messages, they are displayed in the status bar
-REGIONS = {}     # regions related to each lint message
+UNDERLINES = {}     # regions related to each lint message
 TIMES = {}       # collects how long it took the linting to complete
 MOD_LOAD = Loader(os.getcwd(), LINTERS)  # utility to load (and reload
                  # if necessary) linter modules [useful when working on plugin]
@@ -106,9 +106,9 @@ def run_once(linter, view, event=None, **kwargs):
     text = view.substr(sublime.Region(0, view.size())).encode('utf-8')
     lines, error_underlines, violation_underlines, warning_underlines, ERRORS[vid], VIOLATIONS[vid], WARNINGS[vid] = linter.run(view, text, view.file_name() or '')
 
-    REGIONS[vid] = error_underlines
-    REGIONS[vid].extend(violation_underlines)
-    REGIONS[vid].extend(warning_underlines)
+    UNDERLINES[vid] = error_underlines
+    UNDERLINES[vid].extend(violation_underlines)
+    UNDERLINES[vid].extend(warning_underlines)
 
     add_lint_marks(view, lines, error_underlines, violation_underlines, warning_underlines)
     update_statusbar(view)
@@ -233,10 +233,13 @@ def erase_lint_marks(view):
 
 def get_lint_regions(view, reverse=False):
     vid = view.id()
-    regions = REGIONS[vid][:]
+    underlines = UNDERLINES[vid][:]
+
+    if not underlines:
+        return underlines
 
     # Each of these regions is one character, so transform it into the character points
-    points = sorted([region.begin() for region in underlines])
+    points = sorted([underline.begin() for underline in underlines])
 
     # Now coalesce adjacent characters into a single region
     underlines = []
@@ -290,7 +293,7 @@ def select_lint_region(view, region):
 
 def find_underline_within(view, region):
     vid = view.id()
-    underlines = REGIONS[vid][:]
+    underlines = UNDERLINES[vid][:]
     underlines.sort(key=lambda x: x.begin())
 
     for underline in underlines:
