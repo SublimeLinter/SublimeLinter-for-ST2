@@ -42,7 +42,7 @@ The "Packages" directory is located at:
 
 * Linux::
 
-    ~/.Sublime Text 2/Packages/
+    ~/.config/sublime-text-2/Packages/
 
 * Windows::
 
@@ -58,7 +58,7 @@ SublimeLinter runs in one of three modes, which is determined by the "sublimelin
 
 Within a file whose language/syntax is supported by SublimeLinter, you can control SublimeLinter via the Command Palette (Command+Shift+P on OS X, Control+Shift+P on Linux/Windows). The available commands are:
 
-* **SublimeLinter: Lint Current File** — Lints the current file, highlights any errors and displays how many errors were found. After using this command, the current view will not be linted until requested by this command or until background or load-save linting mode is enabled.
+* **SublimeLinter: Lint Current File** — Lints the current file, highlights any errors and displays how many errors were found.
 * **SublimeLinter: Show Error List** — Lints the current file, highlights any errors and displays a quick panel with any errors that are found. Selecting an item from the quick panel jumps to that line.
 * **SublimeLinter: Enable Background Linting** — Enables background linting mode for the current view and lints it.
 * **SublimeLinter: Disable Background Linting** — Disables background linting mode for the current view and clears all lint errors.
@@ -95,13 +95,17 @@ Linter-specific notes
 ~~~~~~~~~~~~~~~~~~~~~
 Following are notes specific to individual linters that you should be aware of:
 
-* **JavaScript** – This linter runs jshint.js using JavaScriptCore on Mac OS X or node.js on other platforms, which can be downloaded from `the node.js site <http://nodejs.org/#download>`_. After installation, if node cannot be found by SublimeLinter, you may have to set the path to node in the "sublimelinter\_executable\_map" setting. See "Configuring" below for info on SublimeLinter settings.
+* **JavaScript** – This linter runs `jshint <http://jshint.org>`_ using JavaScriptCore on Mac OS X or node.js on other platforms, which can be downloaded from [the node.js site](http://nodejs.org/#download). After installation, if node cannot be found by SublimeLinter, you may have to set the path to node in the "sublimelinter\_executable\_map" setting. See "Configuring" below for info on SublimeLinter settings.
+
+    You may want to modify the options passed to jshint. This can be done globally or on a per-project basis by using the **jshint_options** setting. Refer to the jshint.org site for more information on the configuration options available.
+
+* **ruby** – If you are using rvm or rbenv, you will probably have to specify the full path to the ruby you are using in the ``sublimelinter_executable_map`` setting. See "Configuring" below for more info.
 
 * **java** – Because it uses ``javac`` to do linting, each time you run the linter the entire dependency graph of the current file will be checked. Depending on the number of classes you import, this can be **extremely** slow. Also note that you **must** provide the ``-sourcepath``, ``-classpath``, ``-Xlint`` and ``{filename}`` arguments to ``javac`` in your per-project settings. See "Per-project settings" below for more information.
 
 Configuring
 -----------
-There are a number of configuration options available to customize the behavior of SublimeLinter and its linters. For the latest information on what options are available, select the menu item ``Preferences->Package Settings->SublimeLinter->Settings - Default``.
+There are a number of configuration options available to customize the behavior of SublimeLinter and its linters. For the latest information on what options are available, select the menu item ``Preferences->Package Settings->SublimeLinter->Settings - Default``. To change the options in your user settings, select the menu item ``Preferences->File Settings - User``.
 
 Per-project settings
 ~~~~~~~~~~~~~~~~~~~~

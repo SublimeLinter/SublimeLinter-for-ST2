@@ -23,7 +23,18 @@ function hint(code, config)
 {
     var results = [];
 
-    if (!_jshint.JSHINT(code, config)) {
+    try {
+        if (!_jshint.JSHINT(code, config)) {
+            _jshint.JSHINT.errors.forEach(function (error) {
+                if (error) {
+                    results.push(error);
+                }
+            });
+        }
+    }
+    catch (e) {
+        results.push({line: 1, character: 1, reason: e.message});
+
         _jshint.JSHINT.errors.forEach(function (error) {
             if (error) {
                 results.push(error);

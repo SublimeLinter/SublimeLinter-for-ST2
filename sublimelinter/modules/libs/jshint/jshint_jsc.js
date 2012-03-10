@@ -1,4 +1,5 @@
 /*jshint boss: true, evil: true */
+/*globals load quit readline JSHINT */
 
 // usage:
 //   jsc ${envHome}/jsc.js -- ${lineCount} {option1:true,option2:false} ${envHome}
@@ -15,9 +16,9 @@ if (typeof(JSHINT) === 'undefined') {
     quit();
 }
 
-var process = function(args) {
+var process = function (args) {
     var lineCount = parseInt(args[0], 10),
-        opts  = (function(arg){
+        opts  = (function (arg) {
             switch (arg) {
             case undefined:
             case '':
@@ -38,10 +39,19 @@ var process = function(args) {
         input += '\n' + readline();
     }
 
-    var results = [];
+    var results = [],
+        err;
 
-    if (!JSHINT(input, opts)) {
-        var err;
+    try
+    {
+        if (!JSHINT(input, opts)) {
+            for (i = 0; err = JSHINT.errors[i]; i++) {
+                results.push(err);
+            }
+        }
+    }
+    catch (e) {
+        results.push({line: 1, character: 1, reason: e.message});
 
         for (i = 0; err = JSHINT.errors[i]; i++) {
             results.push(err);

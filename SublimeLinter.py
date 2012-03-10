@@ -56,7 +56,10 @@ def get_delay(t, view):
 
 
 def last_selected_lineno(view):
-    return view.rowcol(view.sel()[0].end())[0]
+    viewSel = view.sel()
+    if not viewSel:
+        return None
+    return view.rowcol(viewSel[0].end())[0]
 
 
 def update_statusbar(view):
@@ -64,14 +67,15 @@ def update_statusbar(view):
     lineno = last_selected_lineno(view)
     errors = []
 
-    if vid in ERRORS and lineno in ERRORS[vid]:
-        errors.extend(ERRORS[vid][lineno])
+    if lineno:
+        if vid in ERRORS and lineno in ERRORS[vid]:
+            errors.extend(ERRORS[vid][lineno])
 
-    if vid in VIOLATIONS and lineno in VIOLATIONS[vid]:
-        errors.extend(VIOLATIONS[vid][lineno])
+        if vid in VIOLATIONS and lineno in VIOLATIONS[vid]:
+            errors.extend(VIOLATIONS[vid][lineno])
 
-    if vid in WARNINGS and lineno in WARNINGS[vid]:
-        errors.extend(WARNINGS[vid][lineno])
+        if vid in WARNINGS and lineno in WARNINGS[vid]:
+            errors.extend(WARNINGS[vid][lineno])
 
     if errors:
         view.set_status('Linter', '; '.join(errors))
@@ -140,11 +144,11 @@ def popup_error_list(view):
             row, column = view.rowcol(region.begin())
             column += offset
             offset += 1
-            line_text = '{0}^{1}'.format(line_text[0:column], line_text[column:])
+            line_text = u'{0}^{1}'.format(line_text[0:column], line_text[column:])
             index += 1
 
         for message in line_errors:
-            item = [message, '{0}: {1}'.format(line, line_text)]
+            item = [message, u'{0}: {1}'.format(line + 1, line_text.strip())]
             panel_items.append(item)
 
     def on_done(selected_item):
@@ -174,6 +178,7 @@ def popup_error_list(view):
         # We have to force a move to update the cursor position
         view.run_command('move', {'by': 'characters', 'forward': True})
         view.run_command('move', {'by': 'characters', 'forward': False})
+        view.show_at_center(region_begin)
 
     view.window().show_quick_panel(panel_items, on_done)
 
@@ -230,29 +235,42 @@ def get_lint_regions(view, reverse=False):
     vid = view.id()
     regions = REGIONS[vid][:]
 
-    if not regions:
-        return regions
-
     # Each of these regions is one character, so transform it into the character points
-    points = sorted([region.begin() for region in regions])
+    points = sorted([region.begin() for region in underlines])
 
     # Now coalesce adjacent characters into a single region
-    regions = []
+    underlines = []
     last_point = -999
 
     for point in points:
         if point != last_point + 1:
-            regions.append(sublime.Region(point, point))
+            underlines.append(sublime.Region(point, point))
         else:
-            region = regions[-1]
-            regions[-1] = sublime.Region(region.begin(), point)
+            region = underlines[-1]
+            underlines[-1] = sublime.Region(region.begin(), point)
 
         last_point = point
 
-    if reverse:
-        regions.sort(key=lambda x: x.begin(), reverse=True)
+    # Now get all outlines, which includes the entire line where underlines are
+    outlines = view.get_regions('lint-outlines-illegal')
+    outlines.extend(view.get_regions('lint-outlines-violation'))
+    outlines.extend(view.get_regions('lint-outlines-warning'))
 
-    return regions
+    # If an outline region contains an underline region, use only the underline
+    regions = underlines
+
+    for outline in outlines:
+        contains_underlines = False
+
+        for underline in underlines:
+            if outline.contains(underline):
+                contains_underlines = True
+                break
+
+        if not contains_underlines:
+            regions.append(outline)
+
+    return sorted(regions, key=lambda x: x.begin(), reverse=reverse)
 
 
 def select_lint_region(view, region):
@@ -584,7 +602,6 @@ class LintCommand(sublime_plugin.TextCommand):
 
     def _run(self, name):
         '''runs an existing linter'''
-        self.view.settings().set('sublimelinter', False)
         run_once(LINTERS[name.lower()], self.view)
 
 
