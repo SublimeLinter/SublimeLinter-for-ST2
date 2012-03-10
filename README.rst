@@ -63,7 +63,7 @@ Within a file whose language/syntax is supported by SublimeLinter, you can contr
 * **SublimeLinter: Enable Background Linting** — Enables background linting mode for the current view and lints it.
 * **SublimeLinter: Disable Background Linting** — Disables background linting mode for the current view and clears all lint errors.
 * **SublimeLinter: Enable Load-Save Linting** — Enables load-save linting mode for the current view and clears all lint errors.
-* **SublimeLinter: Reset** — Clears all lint errors and sets the linting mode to the value in the Base File settings.
+* **SublimeLinter: Reset** — Clears all lint errors and sets the linting mode to the value in the SublimeLinter.sublime-settings file.
 
 Depending on the file and the current state of background enabling, some of the commands will not be available.
 

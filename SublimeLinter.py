@@ -579,7 +579,7 @@ class LintCommand(sublime_plugin.TextCommand):
     def reset(self):
         '''Removes existing lint marks and restores user settings.'''
         erase_lint_marks(self.view)
-        settings = sublime.load_settings('Base File.sublime-settings')
+        settings = sublime.load_settings('SublimeLinter.sublime-settings')
         self.view.settings().set('sublimelinter', settings.get('sublimelinter', True))
 
     def on(self):
