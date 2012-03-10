@@ -80,6 +80,46 @@
         "sub": true
     },
 
+    "csslint_options":
+    {
+        // Each rule can have three values: error|warning|false
+        // false => rule is disabled.
+        // All rules are enabled and warnings by default.
+        // Currently the only difference between warnings and errors is in the prefix of the message in the Sublime status bar.
+        "rules": 
+        {
+            "adjoining-classes": "warning",
+            "import": "warning",
+            "box-sizing": "warning",
+            "box-model": "warning",
+            "duplicate-background-images": "warning",
+            "compatible-vendor-prefixes": "warning",
+            "display-property-grouping": "warning",
+            "overqualified-elements": "warning",
+            "fallback-colors": "warning",
+            "duplicate-properties": "warning",
+            "empty-rules": "warning",
+            "errors": "warning",
+            "regex-selectors": "warning",
+            "gradients": "warning",
+            "font-sizes": "warning",
+            "font-faces": "warning",
+            "floats": "warning",
+            "important": "warning",
+            "outline-none": "warning",
+            "qualified-headings": "warning",
+            "rules-count": "warning",
+            "shorthand": "warning",
+            "text-indent": "warning",
+            "unique-headings": "warning",
+            "universal-selector": "warning",
+            "vendor-prefix": "warning",
+            "zero-units": "warning",
+            "ids": "warning",
+            "known-properties": "warning"
+        }
+    },
+
     // A list of pep8 error numbers to ignore. By default "line too long" errors are ignored.
     // The list of error codes is in this file: https://github.com/jcrocholl/pep8/blob/master/pep8.py.
     // Search for "Ennn:", where nnn is a 3-digit number.
