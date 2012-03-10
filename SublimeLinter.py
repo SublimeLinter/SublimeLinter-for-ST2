@@ -238,22 +238,6 @@ def get_lint_regions(view, reverse=False):
     if not underlines:
         return underlines
 
-    # Each of these regions is one character, so transform it into the character points
-    points = sorted([underline.begin() for underline in underlines])
-
-    # Now coalesce adjacent characters into a single region
-    underlines = []
-    last_point = -999
-
-    for point in points:
-        if point != last_point + 1:
-            underlines.append(sublime.Region(point, point))
-        else:
-            region = underlines[-1]
-            underlines[-1] = sublime.Region(region.begin(), point)
-
-        last_point = point
-
     # Now get all outlines, which includes the entire line where underlines are
     outlines = view.get_regions('lint-outlines-illegal')
     outlines.extend(view.get_regions('lint-outlines-violation'))
