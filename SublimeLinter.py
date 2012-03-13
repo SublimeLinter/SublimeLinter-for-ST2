@@ -106,9 +106,22 @@ def run_once(linter, view, event=None, **kwargs):
     text = view.substr(sublime.Region(0, view.size())).encode('utf-8')
     lines, error_underlines, violation_underlines, warning_underlines, ERRORS[vid], VIOLATIONS[vid], WARNINGS[vid] = linter.run(view, text, view.file_name() or '')
 
-    UNDERLINES[vid] = error_underlines
-    UNDERLINES[vid].extend(violation_underlines)
-    UNDERLINES[vid].extend(warning_underlines)
+    # Filter out any underlines regions created solely for char-by-char underlining
+    def is_real(underline):
+        return underline['is_real']
+
+    # Map out just the actual set of regions instead of the transport dict
+    def region_only(underline):
+        return underline['region']
+
+    # Store only the real set of underlines to connect with actual lint messages later.
+    UNDERLINES[vid] = map(region_only, filter(is_real, error_underlines))
+    UNDERLINES[vid].extend(map(region_only, filter(is_real, violation_underlines)))
+    UNDERLINES[vid].extend(map(region_only, filter(is_real, warning_underlines)))
+
+    error_underlines = map(region_only, error_underlines)
+    violation_underlines = map(region_only, violation_underlines)
+    warning_underlines = map(region_only, warning_underlines)
 
     add_lint_marks(view, lines, error_underlines, violation_underlines, warning_underlines)
     update_statusbar(view)
