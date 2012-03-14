@@ -16,6 +16,7 @@ ERRORS = {}      # error messages on given line obtained from linter; they are
                  # displayed in the status bar when cursor is on line with error
 VIOLATIONS = {}  # violation messages, they are displayed in the status bar
 WARNINGS = {}    # warning messages, they are displayed in the status bar
+UNDERLINES = {}     # regions related to each lint message
 TIMES = {}       # collects how long it took the linting to complete
 MOD_LOAD = Loader(os.getcwd(), LINTERS)  # utility to load (and reload
                  # if necessary) linter modules [useful when working on plugin]
@@ -123,6 +124,24 @@ def run_once(linter, view, event=None, **kwargs):
     start = time.time()
     text = view.substr(sublime.Region(0, view.size())).encode('utf-8')
     lines, error_underlines, violation_underlines, warning_underlines, ERRORS[vid], VIOLATIONS[vid], WARNINGS[vid] = linter.run(view, text, view.file_name() or '')
+
+    # Filter out any underlines regions created solely for char-by-char underlining
+    def is_real(underline):
+        return underline['is_real']
+
+    # Map out just the actual set of regions instead of the transport dict
+    def region_only(underline):
+        return underline['region']
+
+    # Store only the real set of underlines to connect with actual lint messages later.
+    UNDERLINES[vid] = map(region_only, filter(is_real, error_underlines))
+    UNDERLINES[vid].extend(map(region_only, filter(is_real, violation_underlines)))
+    UNDERLINES[vid].extend(map(region_only, filter(is_real, warning_underlines)))
+
+    error_underlines = map(region_only, error_underlines)
+    violation_underlines = map(region_only, violation_underlines)
+    warning_underlines = map(region_only, warning_underlines)
+
     add_lint_marks(view, lines, error_underlines, violation_underlines, warning_underlines)
     update_statusbar(view)
     end = time.time()
@@ -245,26 +264,11 @@ def erase_lint_marks(view):
 
 
 def get_lint_regions(view, reverse=False):
-    # First get all of the underlines, which includes every underlined character
-    underlines = view.get_regions('lint-underline-illegal')
-    underlines.extend(view.get_regions('lint-underline-violation'))
-    underlines.extend(view.get_regions('lint-underline-warning'))
+    vid = view.id()
+    underlines = UNDERLINES[vid][:]
 
-    # Each of these regions is one character, so transform it into the character points
-    points = sorted([region.begin() for region in underlines])
-
-    # Now coalesce adjacent characters into a single region
-    underlines = []
-    last_point = -999
-
-    for point in points:
-        if point != last_point + 1:
-            underlines.append(sublime.Region(point, point))
-        else:
-            region = underlines[-1]
-            underlines[-1] = sublime.Region(region.begin(), point)
-
-        last_point = point
+    if not underlines:
+        return underlines
 
     # Now get all outlines, which includes the entire line where underlines are
     outlines = view.get_regions('lint-outlines-illegal')
@@ -304,9 +308,8 @@ def select_lint_region(view, region):
 
 
 def find_underline_within(view, region):
-    underlines = view.get_regions('lint-underline-illegal')
-    underlines.extend(view.get_regions('lint-underline-violation'))
-    underlines.extend(view.get_regions('lint-underline-warning'))
+    vid = view.id()
+    underlines = UNDERLINES[vid][:]
     underlines.sort(key=lambda x: x.begin())
 
     for underline in underlines:

@@ -222,7 +222,12 @@ class BaseLinter(object):
         position += line.begin()
 
         for i in xrange(length):
-            underlines.append(sublime.Region(position + i))
+            # Create a transport dict to flag underlines as real/char-expanded
+            underline = {
+                'is_real': i == 0,
+                'region': sublime.Region(position + i),
+            }
+            underlines.append(underline)
 
     def underline_regex(self, view, lineno, regex, lines, underlines, wordmatch=None, linematch=None):
         # Assume lineno is one-based, ST2 wants zero-based line numbers
