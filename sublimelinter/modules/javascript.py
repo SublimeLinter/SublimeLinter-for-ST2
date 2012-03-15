@@ -31,18 +31,17 @@ class Linter(BaseLinter):
             return (False, '', 'JavaScriptCore or node.js is required')
 
     def get_lint_args(self, view, code, filename):
-        path = self.jshint_path()
-        jshint_options = json.dumps(view.settings().get("jshint_options") or {})
+        options = view.settings()
+        linter = options.get('sublimelinter_javascript_linter') or 'jshint'
+        path = os.path.join(os.path.dirname(__file__), 'libs', linter)
+        linter_options = json.dumps(options.get('%s_options' % linter) or {})
 
         if self.use_jsc:
-            args = (os.path.join(path, 'jshint_jsc.js'), '--', str(code.count('\n')), jshint_options, path + os.path.sep)
+            args = (os.path.join(path, '%s_jsc.js' % linter), '--', str(code.count('\n')), linter_options, path + os.path.sep)
         else:
-            args = (os.path.join(path, 'jshint_node.js'), jshint_options)
+            args = (os.path.join(path, '%s_node.js' % linter), linter_options)
 
         return args
-
-    def jshint_path(self):
-        return os.path.join(os.path.dirname(__file__), 'libs', 'jshint')
 
     def parse_errors(self, view, errors, lines, errorUnderlines, violationUnderlines, warningUnderlines, errorMessages, violationMessages, warningMessages):
         errors = json.loads(errors.strip() or '[]')
