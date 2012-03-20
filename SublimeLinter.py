@@ -328,13 +328,16 @@ def select_linter(view, ignore_disabled=False):
     language = None
     linter = None
 
-    if lc_syntax in LINTERS:
-        language = lc_syntax
-    else:
-        syntaxMap = view.settings().get('sublimelinter_syntax_map', {})
+    # first try get the syntax from the syntax_map
+    syntaxMap = view.settings().get('sublimelinter_syntax_map', {})
 
-        if syntax in syntaxMap:
-            language = syntaxMap[syntax]
+    if syntax in syntaxMap:
+        language = syntaxMap[syntax]
+
+    # then go to the default Linter setup
+    if not language:
+        if lc_syntax in LINTERS:
+            language = lc_syntax
 
     if language:
         if ignore_disabled:

@@ -14,70 +14,56 @@ try:
 except ImportError:
     PYLINT_AVAILABLE = False
 
+import base_linter
 from base_linter import BaseLinter
 
 CONFIG = {
-    'language': 'pylint'
+    'language': 'pylint',
+    'executable': 'pylint',
+    'lint_args': ('--reports=n', '--persistent=n', '--include-ids=y', '{filename}'),
+    'input_method': base_linter.INPUT_METHOD_FILE,
 }
 
-
 class Linter(BaseLinter):
-    def get_executable(self, view):
-        return (PYLINT_AVAILABLE, None, 'built in' if PYLINT_AVAILABLE else 'the pylint module could not be imported')
-
-    def built_in_check(self, view, code, filename):
-        linter = lint.PyLinter()
-        checkers.initialize(linter)
-
-        # Disable some errors.
-        linter.load_command_line_configuration([
-            '--module-rgx=.*',  # don't check the module name
-            '--reports=n',      # remove tables
-            '--persistent=n',   # don't save the old score (no sense for temp)
-        ])
-
-        temp = tempfile.NamedTemporaryFile(suffix='.py')
-        temp.write(code)
-        temp.flush()
-
-        output_buffer = StringIO()
-        linter.reporter.set_output(output_buffer)
-        linter.check(temp.name)
-        report = output_buffer.getvalue().replace(temp.name, 'line ')
-
-        output_buffer.close()
-        temp.close()
-
-        return report
-
-    def remove_unwanted(self, errors):
-        '''remove unwanted warnings'''
-        ## todo: investigate how this can be set by a user preference
-        #  as it appears that the user pylint configuration file is ignored.
-        lines = errors.split('\n')
-        wanted = []
-        unwanted = ["Found indentation with tabs instead of spaces",
-                    "************* Module"]
-
-        for line in lines:
-            for not_include in unwanted:
-                if not_include in line:
-                    break
-            else:
-                wanted.append(line)
-
-        return '\n'.join(wanted)
-
     def parse_errors(self, view, errors, lines, errorUnderlines, violationUnderlines, warningUnderlines, errorMessages, violationMessages, warningMessages):
-        errors = self.remove_unwanted(errors)
 
+        def underline_word(lineno, word, underlines):
+            regex = r'((and|or|not|if|elif|while|in)\s+|[+\-*^%%<>=\(\{{])*\s*(?P<underline>[\w\.]*{0}[\w]*)'.format(re.escape(word))
+            self.underline_regex(view, lineno, regex, lines, underlines, word)
+
+        def underline_import(lineno, word, underlines):
+            linematch = '(from\s+[\w_\.]+\s+)?import\s+(?P<match>[^#;]+)'
+            regex = '(^|\s+|,\s*|as\s+)(?P<underline>[\w]*{0}[\w]*)'.format(re.escape(word))
+            self.underline_regex(view, lineno, regex, lines, underlines, word, linematch)
+
+        def underline_for_var(lineno, word, underlines):
+            regex = 'for\s+(?P<underline>[\w]*{0}[\w*])'.format(re.escape(word))
+            self.underline_regex(view, lineno, regex, lines, underlines, word)
+
+        def underline_duplicate_argument(lineno, word, underlines):
+            regex = 'def [\w_]+\(.*?(?P<underline>[\w]*{0}[\w]*)'.format(re.escape(word))
+            self.underline_regex(view, lineno, regex, lines, underlines, word)
+
+        error_objs = []
         for line in errors.splitlines():
             info = line.split(":")
+            if len(info) < 3: continue
 
-            try:
-                lineno = info[1]
-            except IndexError:
-                print info
+            lineno = int(info[1].strip().split(',')[0])
+            col = int(info[1].strip().split(',')[1])
+            name = info[0][1:]
+            level = info[0][0]
 
-            message = ":".join(info[2:])
-            self.add_message(int(lineno), lines, message, errorMessages)
+            if level == 'E':
+                messages = errorMessages
+                underlines = errorUnderlines
+            elif level == 'C': # convention = violation?
+                messages = violationMessages
+                underlines = violationUnderlines
+            elif level == 'W':
+                messages = warningMessages
+                underlines = warningUnderlines
+
+            self.underline_range(view, lineno, col, underlines)
+
+            self.add_message(lineno, lines, '{0}{1}: {2}'.format(level, name, ':'.join(info[2:])), messages)
