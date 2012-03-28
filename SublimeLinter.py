@@ -616,6 +616,8 @@ class LintCommand(sublime_plugin.TextCommand):
             self.on()
         elif lc_action == 'load-save':
             self.enable_load_save()
+        elif lc_action == 'save-only':
+            self.enable_save_only()
         elif lc_action == 'off':
             self.off()
         elif action.lower() in LINTERS:
@@ -634,6 +636,11 @@ class LintCommand(sublime_plugin.TextCommand):
     def enable_load_save(self):
         '''Turns load-save linting on.'''
         self.view.settings().set('sublimelinter', 'load-save')
+        erase_lint_marks(self.view)
+
+    def enable_save_only(self):
+        '''Turns save-only linting on.'''
+        self.view.settings().set('sublimelinter', 'save-only')
         erase_lint_marks(self.view)
 
     def off(self):
@@ -680,7 +687,7 @@ class BackgroundLinter(sublime_plugin.EventListener):
     def on_load(self, view):
         reload_settings(view)
 
-        if view.is_scratch() or view.settings().get('sublimelinter') == False:
+        if view.is_scratch() or view.settings().get('sublimelinter') == False or view.settings().get('sublimelinter') == 'save-only':
             return
 
         background_run(select_linter(view), view, event='on_load')
@@ -874,6 +881,19 @@ class SublimelinterEnableLoadSaveCommand(SublimelinterCommand):
             view = self.window.active_view()
 
             if view and view.settings().get('sublimelinter') == 'load-save':
+                return False
+
+        return enabled
+
+
+class SublimelinterEnableSaveOnlyCommand(SublimelinterCommand):
+    def is_enabled(self):
+        enabled = super(SublimelinterEnableSaveOnlyCommand, self).is_enabled()
+
+        if enabled:
+            view = self.window.active_view()
+
+            if view and view.settings().get('sublimelinter') == 'save-only':
                 return False
 
         return enabled

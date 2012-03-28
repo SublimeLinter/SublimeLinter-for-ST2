@@ -50,6 +50,7 @@ SublimeLinter runs in one of three modes, which is determined by the "sublimelin
 
 * **Background mode (the default)** - When the "sublimelinter" setting is true, linting is performed in the background as you modify a file (if the relevant linter supports it). If you like instant feedback, this is the best way to use SublimeLinter. If you want feedback, but not instantly, you can try another mode or set a minimum queue delay so that the linter will only run after a certain amount of idle time.
 * **Load-save mode** - When the "sublimelinter" setting is "load-save", linting is performed only when a file is loaded and after saving. Errors are cleared as soon as the file is modified.
+* **Save-only mode** - When the "sublimelinter" setting is "save-only", linting is performed only after a file is saved. Errors are cleared as soon as the file is modified.
 * **On demand mode** - When the "sublimelinter" setting is false, linting is performed only when initiated by you. Use the Control+Command+l (OS X) or Control+Alt+l (Linux/Windows) key equivalent or the Command Palette to lint the current file. If the current file has no associated linter, the command will not be available.
 
 Within a file whose language/syntax is supported by SublimeLinter, you can control SublimeLinter via the Command Palette (Command+Shift+P on OS X, Control+Shift+P on Linux/Windows). The available commands are:
@@ -59,6 +60,7 @@ Within a file whose language/syntax is supported by SublimeLinter, you can contr
 * **SublimeLinter: Enable Background Linting** - Enables background linting mode for the current view and lints it.
 * **SublimeLinter: Disable Background Linting** - Disables background linting mode for the current view and clears all lint errors.
 * **SublimeLinter: Enable Load-Save Linting** - Enables load-save linting mode for the current view and clears all lint errors.
+* **SublimeLinter: Enable Save-Only Linting** - Enables save-only linting mode for the current view and clears all lint errors.
 * **SublimeLinter: Reset** - Clears all lint errors and sets the linting mode to the value in the SublimeLinter.sublime-settings file.
 
 Depending on the file and the current state of background enabling, some of the commands will not be available.

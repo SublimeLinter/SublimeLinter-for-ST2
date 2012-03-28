@@ -20,6 +20,11 @@
         "args": {"action": "load-save"}
     },
     {
+        "caption": "SublimeLinter: Enable Save-Only Linting",
+        "command": "sublimelinter_enable_save_only",
+        "args": {"action": "save-only"}
+    },
+    {
         "caption": "SublimeLinter: Disable Background Linting",
         "command": "sublimelinter_disable",
         "args": {"action": "off"}
