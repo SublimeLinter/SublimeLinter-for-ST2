@@ -134,7 +134,9 @@ class Linter(BaseLinter):
             w = pyflakes.Checker(tree, filename)
             if ignore is not None:
                 pyflakes._MAGIC_GLOBALS = old_magic_globals
-            return w.messages
+            lines = code.splitlines()
+            return [m for m in w.messages
+                    if not lines[m.lineno - 1].endswith("# pyflakes.ignore")]
 
     def pep8_check(self, code, filename, ignore=None):
         messages = []
