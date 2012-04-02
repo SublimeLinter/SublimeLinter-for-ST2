@@ -150,7 +150,7 @@ class Linter(BaseLinter):
                 code = text[:4]
                 msg = text[5:]
 
-                if pep8.ignore_code(code):
+                if pep8.ignore_code(code) or (select and code not in select):
                     return
                 elif code.startswith('E'):
                     messages.append(Pep8Error(filename, Dict2Obj(lineno=line_number, col_offset=offset), code, msg))
