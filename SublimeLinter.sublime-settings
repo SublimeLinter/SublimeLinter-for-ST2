@@ -106,7 +106,8 @@
 
     /*
         The inverse of pep8_ignore is pep8_select: ONLY show the given error codes.
-        If this option is specified, pep8_ignore is... ignored. :)
+        This option takes precendence over pep8_ignore: if the same error code is listed
+        in both options, it will be shown.
     */
     "pep8_select": [],
 
