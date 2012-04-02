@@ -137,7 +137,7 @@ class Linter(BaseLinter):
             if ignore:
                 lines = code.splitlines()
                 return [m for m in w.messages
-                        if not lines[m.lineno - 1].endswith("# pyflakes.ignore")]
+                        if not lines[m.lineno - 1].endswith(ignore)]
             else:
                 return w.messages
 
