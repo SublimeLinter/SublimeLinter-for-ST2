@@ -138,7 +138,7 @@ class Linter(BaseLinter):
             return [m for m in w.messages
                     if not lines[m.lineno - 1].endswith("# pyflakes.ignore")]
 
-    def pep8_check(self, code, filename, ignore=None):
+    def pep8_check(self, code, filename, ignore=None, select=None):
         messages = []
         _lines = code.split('\n')
 
@@ -156,10 +156,11 @@ class Linter(BaseLinter):
 
             pep8.Checker.report_error = report_error
             _ignore = ignore + pep8.DEFAULT_IGNORE.split(',')
+            _select = select or []
 
             class FakeOptions:
                 verbose = 0
-                select = []
+                select = _select
                 ignore = _ignore
 
             pep8.options = FakeOptions()
@@ -181,12 +182,16 @@ class Linter(BaseLinter):
 
     def built_in_check(self, view, code, filename):
         errors = []
+        settings = view.settings()
 
-        if view.settings().get("pep8", True):
-            errors.extend(self.pep8_check(code, filename, ignore=view.settings().get('pep8_ignore', [])))
+        if settings.get("pep8", True):
+            errors.extend(self.pep8_check(code, filename,
+                ignore=settings.get('pep8_ignore', []),
+                select=settings.get('pep8_select', []),
+            ))
 
-        pyflakes_ignore = view.settings().get('pyflakes_ignore', None)
-        pyflakes_disabled = view.settings().get('pyflakes_disabled', False)
+        pyflakes_ignore = settings.get('pyflakes_ignore', None)
+        pyflakes_disabled = settings.get('pyflakes_disabled', False)
 
         if not pyflakes_disabled:
             errors.extend(self.pyflakes_check(code, filename, pyflakes_ignore))
