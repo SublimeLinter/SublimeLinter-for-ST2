@@ -261,6 +261,15 @@ class BaseLinter(object):
         for start, end in results:
             self.underline_range(view, lineno, start + offset, underlines, end - start)
 
+    def underline_word(self, view, lineno, position, underlines):
+        # Assume lineno is one-based, ST2 wants zero-based line numbers
+        lineno -= 1
+        line = view.full_line(view.text_point(lineno, 0))
+        position += line.begin()
+
+        word = view.word(position)
+        underlines.append(word)
+
     def run(self, view, code, filename=None):
         self.filename = filename
 
