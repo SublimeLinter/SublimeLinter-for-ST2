@@ -1,7 +1,7 @@
 /*jshint node:true */
 
 /*
-    usage: node /path/to/node.js /path/to/linter/ ["{option1:true,option2:false}"]
+    usage: node /path/to/node.js /path/to/linter/ ["{option1:true,option2:false}"] /path/to/fileToCheck
     */
 
 var _fs = require('fs'),
@@ -17,7 +17,7 @@ function run() {
         filename = process.argv[4] || '';
 
     if (filename) {
-        results = _linter.lint(_fs.readFileSync(filename, 'utf-8'), config, linterPath);
+        results = _linter.lint(_fs.readFileSync(filename, 'utf-8'), config, linterPath, filename);
         _util.puts(JSON.stringify(results));
     } else {
         process.stdin.resume();
