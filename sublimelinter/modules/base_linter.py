@@ -322,7 +322,7 @@ class BaseLinter(object):
         if (engine['name'] == 'jsc'):
             args = (engine['wrapper'], '--', path + os.path.sep, str(code.count('\n')), options)
         else:
-            args = (engine['wrapper'], path + os.path.sep, options)
+            args = (engine['wrapper'], path + os.path.sep, options, view.file_name())
 
         return args
 
