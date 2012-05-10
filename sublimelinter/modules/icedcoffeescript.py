@@ -7,8 +7,8 @@ import os
 from base_linter import BaseLinter
 
 CONFIG = {
-    'language': 'coffeescript',
-    'executable': 'coffee.cmd' if os.name == 'nt' else 'coffee',
+    'language': 'icedcoffeescript',
+    'executable': 'iced.cmd' if os.name == 'nt' else 'iced',
     'lint_args': ['-s', '-l']
 }
 
