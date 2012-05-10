@@ -10,6 +10,7 @@ SublimeLinter has built in linters for the following languages:
 
 * CoffeeScript - lint via `coffee.cmd -l`
 * CSS - lint via built-in [csslint](http://csslint.net)
+* IcedCoffeeScript - lint via `iced -l`
 * java - lint via `javac -Xlint`
 * Javascript - lint via built in [jshint](http://jshint.org), [jslint](http://jslint.com), or the [closure linter (gjslint)](https://developers.google.com/closure/utilities/docs/linter_howto) (if installed)
 * Objective-J - lint via built-in [capp_lint](https://github.com/aparajita/capp_lint)
