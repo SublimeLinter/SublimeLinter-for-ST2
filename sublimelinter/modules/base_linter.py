@@ -71,6 +71,20 @@ if not os.path.exists(TEMPFILES_DIR):
     os.mkdir(TEMPFILES_DIR)
 
 
+def search_ancestor_file(name, dirname):
+    # check name exists on file system
+    filename = os.path.join(dirname, name)
+    if os.path.isfile(filename):
+        # if it does return it
+        return filename
+    parentDir = os.path.dirname(dirname)
+    parentFile = os.path.join(parentDir, name)
+    if filename == parentFile:
+        return None
+    # resursively call parent
+    return search_ancestor_file(name, parentDir)
+
+
 class BaseLinter(object):
     '''A base class for linters. Your linter module needs to do the following:
 
@@ -323,7 +337,15 @@ class BaseLinter(object):
 
     def get_javascript_args(self, view, linter, code):
         path = os.path.join(self.LIB_PATH, linter)
-        options = json.dumps(view.settings().get('%s_options' % linter) or {})
+        options = None
+        if linter == 'jshint' and view.file_name():
+            rcfile = search_ancestor_file('.jshintrc', os.path.dirname(view.file_name()))
+            if rcfile:
+                with open(rcfile, 'r') as f:
+                    options = f.read()
+
+        if options == None:
+            options = json.dumps(view.settings().get('%s_options' % linter) or {})
 
         self.get_javascript_engine(view)
         engine = self.js_engine

@@ -168,6 +168,7 @@ For example, let's say we are editing a Java project and want to use the "java" 
         }
     }
 
+The jshint follows convention set by node-jshint (though node is not required) and will attempt to locate the configuration file for you starting in pwd. (or "present working directory") If this does not yield a .jshintrc file, it will move one level up (..) the directory tree all the way up to the filesystem root. If a file is found, it stops immediately and uses that set of configuration instead of "jshint_options".
 
 ### Customizing colors
 **IMPORTANT** - The theme style names have recently changed. The old and new color
