@@ -9,7 +9,7 @@ from base_linter import BaseLinter
 CONFIG = {
     'language': 'coffeescript',
     'executable': 'coffee.cmd' if os.name == 'nt' else 'coffee',
-    'lint_args': '-l'
+    'lint_args': ['-s', '-l']
 }
 
 
@@ -17,11 +17,12 @@ class Linter(BaseLinter):
     def parse_errors(self, view, errors, lines, errorUnderlines,
                      violationUnderlines, warningUnderlines, errorMessages,
                      violationMessages, warningMessages):
+
         for line in errors.splitlines():
-            match = re.match(r'.*?Error: In .+?, Parse error on line '
+            match = re.match(r'.*?Error: Parse error on line '
                              r'(?P<line>\d+): (?P<error>.+)', line)
             if not match:
-                match = re.match(r'.*?Error: In .+?, (?P<error>.+) '
+                match = re.match(r'.*?Error: (?P<error>.+) '
                                  r'on line (?P<line>\d+)', line)
 
             if match:
