@@ -16,7 +16,6 @@ CONFIG = {
 class Linter(BaseLinter):
     def parse_errors(self, view, errors, lines, errorUnderlines, violationUnderlines, warningUnderlines, errorMessages, violationMessages, warningMessages):
         for line in errors.splitlines():
-            print line
             match = re.match(r'^.+:(?P<line>\d+):\s+(?P<error>.+)', line)
 
             if match:
