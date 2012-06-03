@@ -36,7 +36,7 @@ import os
 import os.path
 import re
 import sys
-
+import unittest
 
 EXIT_CODE_SHOW_HTML = 205
 EXIT_CODE_SHOW_TOOLTIP = 206
@@ -77,7 +77,54 @@ def relative_path(basedir, filename):
     return filename
 
 
+def string_replacer(line):
+    """Take string literals like 'hello' and replace them with empty string literals, while respecting escaping."""
+
+    r = []
+    in_quote = None
+    escapes = 0
+    for i, c in enumerate(line):
+        if in_quote:
+            if not escapes and c == in_quote:
+                in_quote = None
+                r.append(c)
+                continue
+
+            # We're inside of a string literal. Ignore everything.
+        else:
+            if not escapes and (c == '"' or c == "'"):
+                in_quote = c
+                r.append(c)
+                continue
+
+            # Outside of a string literal, preserve everything.
+            r.append(c)
+
+        if c == '\\':
+            escapes = (escapes + 1) % 2
+        else:
+            escapes = 0
+
+    if in_quote:
+        # Unterminated string literal.
+        pass
+    return "".join(r)
+
+
 class LintChecker(object):
+    """Examine Objective-J code statically and generate warnings for possible errors and deviations from the coding-style standard.
+
+    >>> LintChecker().lint_text('var b = 5+5;')
+    [{'positions': [9], 'filename': '<stdin>', 'lineNum': 1, 'message': 'binary operator without surrounding spaces', 'type': 2, 'line': u'var b = 5+5;'}]
+
+    >>> LintChecker().lint_text('''
+    ... if( 1 ) {
+    ...   var b=7;
+    ...       c = 8;
+    ... }
+    ... ''')
+    [{'positions': [2], 'filename': '<stdin>', 'lineNum': 2, 'message': 'missing space between control statement and parentheses', 'type': 2, 'line': u'if( 1 ) {'}, {'positions': [8], 'filename': '<stdin>', 'lineNum': 2, 'message': 'braces should be on their own line', 'type': 1, 'line': u'if( 1 ) {'}, {'positions': [3, 5], 'filename': '<stdin>', 'lineNum': 2, 'message': 'space inside parentheses', 'type': 1, 'line': u'if( 1 ) {'}, {'positions': [7], 'filename': '<stdin>', 'lineNum': 3, 'message': 'assignment operator without surrounding spaces', 'type': 2, 'line': u'  var b=7;'}, {'lineNum': 4, 'message': 'accidental global variable', 'type': 1, 'line': u'      c = 8;', 'filename': '<stdin>'}]
+    """
 
     VAR_BLOCK_START_RE = re.compile(ur'''(?x)
         (?P<indent>\s*)         # indent before a var keyword
@@ -128,14 +175,32 @@ class LintChecker(object):
     TRAILING_WHITESPACE_RE = re.compile(ur'^.*(\s+)$')
     STRIP_LINE_COMMENT_RE = re.compile(ur'(.*)\s*(?://.*|/\*.*\*/\s*)$')
     LINE_COMMENT_RE = re.compile(ur'\s*(?:/\*.*\*/\s*|//.*)$')
+    COMMENT_RE = re.compile(ur'/\*.*?\*/')
     BLOCK_COMMENT_START_RE = re.compile(ur'\s*/\*.*(?!\*/\s*)$')
     BLOCK_COMMENT_END_RE = re.compile(ur'.*?\*/')
     METHOD_RE = ur'[-+]\s*\([a-zA-Z_$]\w*\)\s*[a-zA-Z_$]\w*'
     FUNCTION_RE = re.compile(ur'\s*function\s*(?P<name>[a-zA-Z_$]\w*)?\(.*\)\s*\{?')
-    STRING_LITERAL_RE = re.compile(ur'(?<!\\)(["\'])(.*?)(?<!\\)\1')
     RE_RE = re.compile(ur'(?<!\\)/.*?[^\\]/[gims]*')
     EMPTY_STRING_LITERAL_FUNCTION = lambda match: match.group(1) + (len(match.group(2)) * ' ') + match.group(1)
     EMPTY_SELF_STRING_LITERAL_FUNCTION = lambda self, match: match.group(1) + (len(match.group(2)) * ' ') + match.group(1)
+
+    def noncapturing(regex):
+        return ur'(?:%s)' % regex
+
+    def optional(regex):
+        return ur'(?:%s)?' % regex
+
+    DECIMAL_DIGIT_RE = ur'[0-9]'
+    NON_ZERO_DIGIT_RE = ur'[1-9]'
+    DECIMAL_DIGITS_RE = DECIMAL_DIGIT_RE + ur'+'
+    DECIMAL_DIGITS_OPT_RE = optional(DECIMAL_DIGIT_RE + ur'+')
+    EXPONENT_INDICATOR_RE = ur'[eE]'
+    SIGNED_INTEGER_RE = noncapturing(DECIMAL_DIGITS_RE) + ur'|' + noncapturing(ur'\+' + DECIMAL_DIGITS_RE) + ur'|' + noncapturing('-' + DECIMAL_DIGITS_RE)
+    DECIMAL_INTEGER_LITERAL_RE = ur'0|' + noncapturing(NON_ZERO_DIGIT_RE + DECIMAL_DIGIT_RE + ur'*')
+    EXPONENT_PART_RE = EXPONENT_INDICATOR_RE + noncapturing(SIGNED_INTEGER_RE)
+    EXPONENT_PART_OPT_RE = optional(EXPONENT_PART_RE)
+
+    DECIMAL_LITERAL_RE = re.compile(noncapturing(noncapturing(DECIMAL_INTEGER_LITERAL_RE) + ur'\.' + DECIMAL_DIGITS_OPT_RE + EXPONENT_PART_OPT_RE) + ur'|\.' + noncapturing(DECIMAL_DIGITS_RE + EXPONENT_PART_OPT_RE) + ur'|' + noncapturing(noncapturing(DECIMAL_INTEGER_LITERAL_RE) + EXPONENT_PART_OPT_RE))
 
     ERROR_TYPE_ILLEGAL = 1
     ERROR_TYPE_WARNING = 2
@@ -144,8 +209,17 @@ class LintChecker(object):
     # with spaces so we don't get false matches within them
     STD_IGNORES = (
         {'regex': STRIP_LINE_COMMENT_RE, 'replace': ''},
-        {'regex': STRING_LITERAL_RE, 'replace': EMPTY_STRING_LITERAL_FUNCTION},
+        {'function': string_replacer},
+        {'regex': COMMENT_RE, 'replace': ''},
         {'regex': RE_RE, 'replace': '/ /'},
+    )
+
+    # Convert exponential notation like 1.1e-6 to an arbitrary constant number so that the "e" notation doesn't
+    # need to be understood by the regular matchers. Obviously this is limited by the fact that we're regexing
+    # so this will probably catch some things which are not properly decimal literals (parts of strings or
+    # variable names for instance).
+    EXPONENTIAL_TO_SIMPLE = (
+        {'regex': DECIMAL_LITERAL_RE, 'replace': '42'},
     )
 
     LINE_CHECKLIST = (
@@ -197,20 +271,11 @@ class LintChecker(object):
             # Filter out @import statements, method declarations, method parameters, unary plus/minus/increment/decrement
             'filter': {'regex': re.compile(ur'(^@import\b|^\s*' + METHOD_RE + '|^\s*[a-zA-Z_$]\w*:\s*\([a-zA-Z_$][\w<>]*\)\s*\w+|[a-zA-Z_$]\w*(\+\+|--)|([ -+*/%^&|<>!]=?|&&|\|\||<<|>>>|={1,3}|!==?)\s*[-+][\w(\[])'), 'pass': False},
 
-            'preprocess': STD_IGNORES,
+            # Also convert literals like 1.5e+7 to 42 so that the - or + in there is ignored for purposes of this warning.
+            'preprocess': STD_IGNORES + EXPONENTIAL_TO_SIMPLE,
             'regex': re.compile(ur'(?<=[\w)\]"\']|([ ]))([-+*/%^]|&&?|\|\|?|<<|>>>?)(?=[\w({\["\']|(?(1)\b\b|[ ]))'),
             'error': 'binary operator without surrounding spaces',
             'showPositionForGroup': 2,
-            'type': ERROR_TYPE_WARNING
-        },
-        {
-            # Filter out @import statements, method declarations
-            'filter': {'regex': re.compile(ur'^(@import\b|\s*' + METHOD_RE + ')'), 'pass': False},
-
-            'preprocess': STD_IGNORES,
-            'regex': re.compile(ur'(?:[-*/%^&|<>!]=?|&&|\|\||<<|>>>|={1,3}|!==?)\s*(?<!\+)(\+)[\w(\[]'),
-            'error': 'useless unary + operator',
-            'showPositionForGroup': 1,
             'type': ERROR_TYPE_WARNING
         },
         {
@@ -266,7 +331,7 @@ class LintChecker(object):
     TEXT_ERROR_SINGLE_FILE_TEMPLATE = Template(u'$lineNum: $message.\n+$line\n')
     TEXT_ERROR_MULTI_FILE_TEMPLATE = Template(u'$filename:$lineNum: $message.\n+$line\n')
 
-    def __init__(self, view, basedir='', var_declarations=VAR_DECLARATIONS_SINGLE, verbose=False):
+    def __init__(self, view=None, basedir='', var_declarations=VAR_DECLARATIONS_SINGLE, verbose=False):
         self.view = view
         self.basedir = unicode(basedir, 'utf-8')
         self.errors = []
@@ -296,6 +361,7 @@ class LintChecker(object):
                     continue
 
             line = self.line
+            originalLine = line
             lineFilter = check.get('filter')
 
             if lineFilter:
@@ -315,6 +381,11 @@ class LintChecker(object):
 
                     if regex:
                         line = regex.sub(processor.get('replace', ''), line)
+
+                    fnct = processor.get('function')
+
+                    if fnct:
+                        line = fnct(line)
 
             regex = check.get('regex')
 
@@ -352,12 +423,15 @@ class LintChecker(object):
                                     break
 
             if positions:
-                self.error(check['error'], line=line, positions=positions, type=check['type'])
+                self.error(check['error'], line=originalLine, positions=positions, type=check['type'])
 
     def next_statement(self, expect_line=False, check_line=True):
         try:
             while True:
-                raw_line = self.sourcefile.next()[:-1]  # strip EOL
+                raw_line = self.sourcefile.next()
+                # strip EOL
+                if raw_line[-1] == '\n':  # ... unless this is the last line which might not have a \n.
+                    raw_line = raw_line[:-1]
 
                 try:
                     self.line = unicode(raw_line, 'utf-8', 'strict')  # convert to Unicode
@@ -430,7 +504,7 @@ class LintChecker(object):
 
         # Remove all quoted strings from the expression so that we don't
         # count unmatched pairs inside the strings.
-        self.expression = self.STRING_LITERAL_RE.sub(self.EMPTY_SELF_STRING_LITERAL_FUNCTION, self.expression)
+        self.expression = string_replacer(self.expression)
 
         self.strip_comment()
         self.expression = self.expression.strip()
@@ -747,7 +821,7 @@ class LintChecker(object):
                     print u'EOF\n'
                 pass
 
-    def lint_text(self, text, filename):
+    def lint_text(self, text, filename="<stdin>"):
         self.filename = filename
         self.filesToCheck = []
 
@@ -758,6 +832,8 @@ class LintChecker(object):
             if self.verbose:
                 print u'EOF\n'
             pass
+
+        return self.errors
 
     def count_files_checked(self):
         return len(self.filesToCheck)
@@ -957,6 +1033,50 @@ class LintChecker(object):
 </html>
 """
         exit_show_html(html)
+
+
+class MiscTest(unittest.TestCase):
+    def test_string_replacer(self):
+        self.assertEquals(string_replacer("x = 'hello';"), "x = '';")
+        self.assertEquals(string_replacer("x = '\\' hello';"), "x = '';")
+        self.assertEquals(string_replacer("x = '\\\\';"), "x = '';")
+        self.assertEquals(string_replacer("""x = '"string in string"';"""), "x = '';")
+
+        self.assertEquals(string_replacer('x = "hello";'), 'x = "";')
+        self.assertEquals(string_replacer('x = "\\" hello";'), 'x = "";')
+        self.assertEquals(string_replacer('x = "\\\\";'), 'x = "";')
+        self.assertEquals(string_replacer('''x = "'";'''), 'x = "";')
+
+
+class LintCheckerTest(unittest.TestCase):
+    def test_exponential_notation(self):
+        """Test that exponential notation such as 1.1e-6 doesn't cause a warning about missing whitespace."""
+
+        # This should not report "binary operator without surrounding spaces".
+        self.assertEquals(LintChecker().lint_text("a = 2.1e-6;"), [])
+        self.assertEquals(LintChecker().lint_text("a = 2.1e+6;"), [])
+        self.assertEquals(LintChecker().lint_text("a = 2e-0;"), [])
+        self.assertEquals(LintChecker().lint_text("a = 2e+0;"), [])
+
+        # But this should.
+        self.assertEquals(LintChecker().lint_text("a = 1.1e-6+2e2;"), [{'positions': [6], 'filename': '<stdin>', 'lineNum': 1, 'message': 'binary operator without surrounding spaces', 'type': 2, 'line': u'a = 1.1e-6+2e2;'}])
+
+    def test_function_types(self):
+        """Test that function definitions like function(/*CPString*/key) don't cause warnings about surrounding spaces."""
+
+        # This should not report "binary operator without surrounding spaces".
+        self.assertEquals(LintChecker().lint_text("var resolveMultipleValues = function(/*CPString*/key, /*CPDictionary*/bindings, /*GSBindingOperationKind*/operation)"), [])
+
+    def test_unary_plus(self):
+        """Test that = +<variable>, like in `x = +y;`, doesn't cause a warning."""
+
+        # +<variable> converts number in a string to a number.
+        self.assertEquals(LintChecker().lint_text("var y = +x;"), [])
+
+    def test_string_escaping(self):
+        """Test that string literals are not parsed as syntax, even when they end with a double backslash."""
+
+        self.assertEquals(LintChecker().lint_text('var x = "(\\\\";'), [])
 
 
 if __name__ == '__main__':
