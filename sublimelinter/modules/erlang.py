@@ -7,10 +7,10 @@
 #       {
 #               "SublimeLinter":
 #               {
-#                   "linter_args":
+#                   "erlang":
 #                   {
-#                       "erlang":
-#                       [
+#                       "lint_args":
+#                       [ // note - use absolute paths!
 #                           "/Users/joe/projects/myproj/libs/libA/ebin",
 #                           "/Users/joe/projects/myproj/libs/libB/ebin",
 #                           "/Users/joe/projects/myproj/deps/depA/ebin"
@@ -31,7 +31,6 @@ CONFIG = {
     'executable': 'escript',
     'lint_args': [eflymake, "{filename}"],
     'input_method': INPUT_METHOD_TEMP_FILE,
-  #  'tempfile_suffix': ".erl",
     'test_existence_args': ' ',
 }
 
