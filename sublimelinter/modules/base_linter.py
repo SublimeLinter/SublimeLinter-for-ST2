@@ -2,8 +2,9 @@
 # base_linter.py - base class for linters
 
 import os
+import os.path
+import json
 import re
-import tempfile
 import subprocess
 
 import sublime
@@ -13,6 +14,8 @@ INPUT_METHOD_STDIN = 1
 
 # If the linter uses an executable that does not take stdin but you wish to use
 # a temp file so that the current view can be linted interactively, use this input method.
+# If the current view has been saved, the tempfile will have the same name as the
+# view's file, which is necessary for some linters.
 INPUT_METHOD_TEMP_FILE = 2
 
 # If the linter uses an executable that does not take stdin and you wish to have
@@ -66,6 +69,14 @@ CONFIG = {
     'tempfile_suffix': ""
 }
 
+TEMPFILES_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '.tempfiles'))
+
+JSON_MULTILINE_COMMENT_RE = re.compile(r'\/\*[\s\S]*?\*\/')
+JSON_SINGLELINE_COMMENT_RE = re.compile(r'\/\/[^\n\r]*')
+
+if not os.path.exists(TEMPFILES_DIR):
+    os.mkdir(TEMPFILES_DIR)
+
 
 class BaseLinter(object):
     '''A base class for linters. Your linter module needs to do the following:
@@ -79,18 +90,27 @@ class BaseLinter(object):
        If you do subclass and override __init__, be sure to call super(MyLinter, self).__init__(config).
     '''
 
+    JSC_PATH = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/A/Resources/jsc'
+
+    LIB_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), 'libs'))
+
+    JAVASCRIPT_ENGINES = ['node', 'jsc']
+    JAVASCRIPT_ENGINE_NAMES = {'node': 'node.js', 'jsc': 'JavaScriptCore'}
+    JAVASCRIPT_ENGINE_WRAPPERS_PATH = os.path.join(LIB_PATH, 'jsengines')
+
     def __init__(self, config):
         self.language = config['language']
         self.enabled = False
         self.executable = config.get('executable', None)
         self.test_existence_args = config.get('test_existence_args', ('-v',))
-        self.tempfile_suffix = config.get('tempfile_suffix', "")
+        self.js_engine = None
 
         if isinstance(self.test_existence_args, basestring):
             self.test_existence_args = (self.test_existence_args,)
 
         self.input_method = config.get('input_method', INPUT_METHOD_STDIN)
-        self.lint_args = config.get('lint_args', ())
+        self.filename = None
+        self.lint_args = config.get('lint_args', [])
 
         if isinstance(self.lint_args, basestring):
             self.lint_args = (self.lint_args,)
@@ -98,7 +118,7 @@ class BaseLinter(object):
     def check_enabled(self, view):
         if hasattr(self, 'get_executable'):
             try:
-                self.enabled, self.executable, message = self.get_executable()
+                self.enabled, self.executable, message = self.get_executable(view)
 
                 if self.enabled and not message:
                     message = 'using "{0}"'.format(self.executable) if self.executable else 'built in'
@@ -134,32 +154,44 @@ class BaseLinter(object):
 
     def _get_lint_args(self, view, code, filename):
         if hasattr(self, 'get_lint_args'):
-            return self.get_lint_args(view, code, filename) or ()
+            return self.get_lint_args(view, code, filename) or []
         else:
-            args = [arg.format(filename=filename) for arg in self.lint_args]
-            sl_settings = view.settings().get("SublimeLinter")
-            if sl_settings:
-                project_args = sl_settings.get("linter_args", dict())
-                language_args = project_args[self.language]
-                args.extend(language_args)
-            return args
+            lintArgs = self.lint_args or []
+            settings = view.settings().get('SublimeLinter', {}).get(self.language, {})
+
+            if settings:
+                args = settings.get('lint_args', [])
+                lintArgs.extend(args)
+
+                cwd = settings.get('working_directory')
+
+                if cwd and os.path.isabs(cwd) and os.path.isdir(cwd):
+                    os.chdir(cwd)
+
+            return [arg.format(filename=filename) for arg in lintArgs]
 
     def built_in_check(self, view, code, filename):
         return ''
 
     def executable_check(self, view, code, filename):
         args = [self.executable]
-        tmpfile = None
+        tempfilePath = None
 
         if self.input_method == INPUT_METHOD_STDIN:
             args.extend(self._get_lint_args(view, code, filename))
 
         elif self.input_method == INPUT_METHOD_TEMP_FILE:
-            tmpfile = tempfile.NamedTemporaryFile(mode='r+', delete=False, suffix=self.tempfile_suffix)
-            tmpfile.write(code)
-            tmpfile.close()  # windows cannot reopen an open file
+            if filename:
+                filename = os.path.basename(filename)
+            else:
+                filename = 'view{0}'.format(view.id())
 
-            args.extend(self._get_lint_args(view, code, tmpfile.name))
+            tempfilePath = os.path.join(TEMPFILES_DIR, filename)
+
+            with open(tempfilePath, 'w') as f:
+                f.write(code)
+
+            args.extend(self._get_lint_args(view, code, tempfilePath))
             code = ''
 
         elif self.input_method == INPUT_METHOD_FILE:
@@ -169,16 +201,16 @@ class BaseLinter(object):
         else:
             return ''
 
-        process = subprocess.Popen(args,
-                                   stdin=subprocess.PIPE,
-                                   stdout=subprocess.PIPE,
-                                   stderr=subprocess.STDOUT,
-                                   startupinfo=self.get_startupinfo())
-        result = process.communicate(code)[0]
-
-        # remove the leftover temp file
-        if tmpfile and os.path.exists(tmpfile.name):
-            os.remove(tmpfile.name)
+        try:
+            process = subprocess.Popen(args,
+                                       stdin=subprocess.PIPE,
+                                       stdout=subprocess.PIPE,
+                                       stderr=subprocess.STDOUT,
+                                       startupinfo=self.get_startupinfo())
+            result = process.communicate(code)[0]
+        finally:
+            if tempfilePath:
+                os.remove(tempfilePath)
 
         return result.strip()
 
@@ -236,7 +268,18 @@ class BaseLinter(object):
         for start, end in results:
             self.underline_range(view, lineno, start + offset, underlines, end - start)
 
-    def run(self, view, code, filename='untitled'):
+    def underline_word(self, view, lineno, position, underlines):
+        # Assume lineno is one-based, ST2 wants zero-based line numbers
+        lineno -= 1
+        line = view.full_line(view.text_point(lineno, 0))
+        position += line.begin()
+
+        word = view.word(position)
+        underlines.append(word)
+
+    def run(self, view, code, filename=None):
+        self.filename = filename
+
         if self.executable is None:
             errors = self.built_in_check(view, code, filename)
         else:
@@ -279,3 +322,94 @@ class BaseLinter(object):
             return subprocess.Popen(args, self.get_startupinfo()).communicate()[0]
         except:
             return ''
+
+    def jsc_path(self):
+        '''Return the path to JavaScriptCore. Use this method in case the path
+           has to be dynamically calculated in the future.'''
+        return self.JSC_PATH
+
+    def find_file(self, filename, view):
+        '''Find a file with the given name, starting in the view's directory,
+           then ascending the file hierarchy up to root.'''
+        path = view.file_name()
+
+        # quit if the view is temporary
+        if not path:
+            return None
+
+        dirname = os.path.dirname(path)
+
+        while True:
+            path = os.path.join(dirname, filename)
+
+            if os.path.isfile(path):
+                with open(path, 'r') as f:
+                    return f.read()
+
+            # if we hit root, quit
+            parent = os.path.dirname(dirname)
+
+            if parent == dirname:
+                return None
+            else:
+                dirname = parent
+
+    def strip_json_comments(self, json_str):
+        stripped_json = JSON_MULTILINE_COMMENT_RE.sub('', json_str)
+        stripped_json = JSON_SINGLELINE_COMMENT_RE.sub('', stripped_json)
+        return json.dumps(json.loads(stripped_json))
+
+    def get_javascript_args(self, view, linter, code):
+        path = os.path.join(self.LIB_PATH, linter)
+        options = self.get_javascript_options(view)
+
+        if options == None:
+            options = json.dumps(view.settings().get('%s_options' % linter) or {})
+
+        self.get_javascript_engine(view)
+        engine = self.js_engine
+
+        if (engine['name'] == 'jsc'):
+            args = (engine['wrapper'], '--', path + os.path.sep, str(code.count('\n')), options)
+        else:
+            args = (engine['wrapper'], path + os.path.sep, options)
+
+        return args
+
+    def get_javascript_options(self, view):
+        '''Subclasses should override this if they want to provide options
+           for a Javascript-based linter. If the subclass cannot provide
+           options, it should return None (or not return anything).'''
+        return None
+
+    def get_javascript_engine(self, view):
+        if self.js_engine == None:
+            for engine in self.JAVASCRIPT_ENGINES:
+                if engine == 'node':
+                    try:
+                        path = self.get_mapped_executable(view, 'node')
+                        subprocess.call([path, '-v'], startupinfo=self.get_startupinfo())
+                        self.js_engine = {
+                            'name': engine,
+                            'path': path,
+                            'wrapper': os.path.join(self.JAVASCRIPT_ENGINE_WRAPPERS_PATH, engine + '.js'),
+                        }
+                        break
+                    except OSError:
+                        pass
+
+                elif engine == 'jsc':
+                    if os.path.exists(self.jsc_path()):
+                        self.js_engine = {
+                            'name': engine,
+                            'path': self.jsc_path(),
+                            'wrapper': os.path.join(self.JAVASCRIPT_ENGINE_WRAPPERS_PATH, engine + '.js'),
+                        }
+                        break
+
+        if self.js_engine != None:
+            return (True, self.js_engine['path'], 'using {0}'.format(self.JAVASCRIPT_ENGINE_NAMES[self.js_engine['name']]))
+
+        # Didn't find an engine, tell the user
+        engine_list = ', '.join(self.JAVASCRIPT_ENGINE_NAMES.values())
+        return (False, '', 'One of the following Javascript engines must be installed: ' + engine_list)

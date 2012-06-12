@@ -211,6 +211,7 @@ class Linter(BaseLinter):
             self.underline_regex(view, lineno, regex, lines, underlines, word)
 
         errors.sort(lambda a, b: cmp(a.lineno, b.lineno))
+        ignoreImportStar = view.settings().get('pyflakes_ignore_import_*', True)
 
         for error in errors:
             if error.level == 'E':
@@ -222,6 +223,9 @@ class Linter(BaseLinter):
             elif error.level == 'W':
                 messages = warningMessages
                 underlines = warningUnderlines
+
+            if isinstance(error, pyflakes.messages.ImportStarUsed) and ignoreImportStar:
+                continue
 
             self.add_message(error.lineno, lines, str(error), messages)
 

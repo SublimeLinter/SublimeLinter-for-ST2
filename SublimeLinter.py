@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
+from functools import partial
 import os
+import re
 import sys
 import time
 import threading
@@ -16,32 +18,73 @@ ERRORS = {}      # error messages on given line obtained from linter; they are
                  # displayed in the status bar when cursor is on line with error
 VIOLATIONS = {}  # violation messages, they are displayed in the status bar
 WARNINGS = {}    # warning messages, they are displayed in the status bar
+UNDERLINES = {}  # underline regions related to each lint message
 TIMES = {}       # collects how long it took the linting to complete
 MOD_LOAD = Loader(os.getcwd(), LINTERS)  # utility to load (and reload
                  # if necessary) linter modules [useful when working on plugin]
 
+
 # For snappier linting, different delays are used for different linting times:
 # (linting time, delays)
 DELAYS = (
-    (800, (800, 2000)),
-    (400, (400, 1000)),
-    (200, (200, 500)),
-    (100, (100, 300)),
     (50, (50, 100)),
+    (100, (100, 300)),
+    (200, (200, 500)),
+    (400, (400, 1000)),
+    (800, (800, 2000)),
+    (1600, (1600, 3000)),
 )
+
+MARKS = {
+    'violation': ('', 'dot'),
+    'warning': ('', 'dot'),
+    'illegal': ('', 'circle'),
+}
+
+# All available settings for SublimeLinter;
+# only these are inherited from SublimeLinter.sublime-settings
+ALL_SETTINGS = [
+    'sublimelinter',
+    'sublimelinter_executable_map',
+    'sublimelinter_syntax_map',
+    'sublimelinter_disable',
+    'sublimelinter_delay',
+    'sublimelinter_fill_outlines',
+    'sublimelinter_gutter_marks',
+    'sublimelinter_wrap_find',
+    'sublimelinter_popup_errors_on_save',
+    'perl_linter',
+    'javascript_linter',
+    'jshint_options',
+    'jslint_options',
+    'gjslint_options',
+    'gjslint_ignore',
+    'csslint_options',
+    'pep8',
+    'pep8_ignore',
+    'pyflakes_ignore',
+    'pyflakes_ignore_import_*',
+    'sublimelinter_objj_check_ascii',
+    'sublimelinter_notes',
+    'annotations'
+]
+
+WHITESPACE_RE = re.compile(r'\s+')
 
 
 def get_delay(t, view):
     delay = 0
 
     for _t, d in DELAYS:
-        if t >= _t:
+        if _t <= t:
             delay = d
-    delay = DELAYS[-1][1]
-    minDelay = int(view.settings().get('sublimelinter_delay', 0) * 1000)
+
+    delay = delay or DELAYS[0][1]
 
     # If the user specifies a delay greater than the built in delay,
     # figure they only want to see marks when idle.
+    minDelay = int(view.settings().get('sublimelinter_delay', 0) * 1000)
+
     if minDelay > delay[1]:
         erase_lint_marks(view)
 
@@ -49,84 +92,145 @@ def get_delay(t, view):
 
 
 def last_selected_lineno(view):
-    return view.rowcol(view.sel()[0].end())[0]
+    viewSel = view.sel()
+    if not viewSel:
+        return None
+    return view.rowcol(viewSel[0].end())[0]
 
 
 def update_statusbar(view):
     vid = view.id()
     lineno = last_selected_lineno(view)
+    errors = []
 
-    if vid in ERRORS and lineno in ERRORS[vid]:
-        view.set_status('Linter', '; '.join(ERRORS[vid][lineno]))
-    elif vid in VIOLATIONS and lineno in VIOLATIONS[vid]:
-        view.set_status('Linter', '; '.join(VIOLATIONS[vid][lineno]))
-    elif vid in WARNINGS and lineno in WARNINGS[vid]:
-        view.set_status('Linter', '; '.join(WARNINGS[vid][lineno]))
+    if lineno is not None:
+        if vid in ERRORS and lineno in ERRORS[vid]:
+            errors.extend(ERRORS[vid][lineno])
+
+        if vid in VIOLATIONS and lineno in VIOLATIONS[vid]:
+            errors.extend(VIOLATIONS[vid][lineno])
+
+        if vid in WARNINGS and lineno in WARNINGS[vid]:
+            errors.extend(WARNINGS[vid][lineno])
+
+    if errors:
+        view.set_status('Linter', '; '.join(errors))
     else:
         view.erase_status('Linter')
 
 
-def background_run(linter, view):
-    '''run a linter on a given view if settings is set appropriately'''
-    if linter:
-        run_once(linter, view)
-
+def run_once(linter, view, **kwargs):
+    '''run a linter on a given view regardless of user setting'''
     if view.settings().get('sublimelinter_notes'):
         highlight_notes(view)
 
-
-def run_once(linter, view):
-    '''run a linter on a given view regardless of user setting'''
-    if linter == LINTERS.get('annotations', None):
-        highlight_notes(view)
+    if not linter:
         return
 
     vid = view.id()
+    ERRORS[vid] = {}
+    VIOLATIONS[vid] = {}
+    WARNINGS[vid] = {}
     start = time.time()
     text = view.substr(sublime.Region(0, view.size())).encode('utf-8')
+    lines, error_underlines, violation_underlines, warning_underlines, ERRORS[vid], VIOLATIONS[vid], WARNINGS[vid] = linter.run(view, text, view.file_name() or '')
 
-    if view.file_name():
-        filename = view.file_name()  # os.path.split(view.file_name())[-1]
-    else:
-        filename = 'untitled'
+    UNDERLINES[vid] = error_underlines[:]
+    UNDERLINES[vid].extend(violation_underlines)
+    UNDERLINES[vid].extend(warning_underlines)
 
-    lines, error_underlines, violation_underlines, warning_underlines, ERRORS[vid], VIOLATIONS[vid], WARNINGS[vid] = linter.run(view, text, filename)
     add_lint_marks(view, lines, error_underlines, violation_underlines, warning_underlines)
     update_statusbar(view)
     end = time.time()
     TIMES[vid] = (end - start) * 1000  # Keep how long it took to lint
+
+    if kwargs.get('event', None) == 'on_post_save' and view.settings().get('sublimelinter_popup_errors_on_save'):
+        popup_error_list(view)
+
+
+def popup_error_list(view):
+    vid = view.id()
+    errors = ERRORS[vid].copy()
+
+    for message_map in [VIOLATIONS[vid], WARNINGS[vid]]:
+        for line, messages in message_map.items():
+            if line in errors:
+                errors[line].extend(messages)
+            else:
+                errors[line] = messages
+
+    # Flatten the errors into a list
+    error_list = []
+
+    for line in sorted(errors.keys()):
+        for index, message in enumerate(errors[line]):
+            error_list.append({'line': line, 'message': message})
+
+    panel_items = []
+
+    for error in error_list:
+        line_text = view.substr(view.full_line(view.text_point(error['line'], 0)))
+        item = [error['message'], u'{0}: {1}'.format(error['line'] + 1, line_text.strip())]
+        panel_items.append(item)
+
+    def on_done(selected_item):
+        if selected_item == -1:
+            return
+
+        selected = view.sel()
+        selected.clear()
+
+        error = error_list[selected_item]
+        region_begin = view.text_point(error['line'], 0)
+
+        # Go to the first non-whitespace character of the line
+        line_text = view.substr(view.full_line(region_begin))
+        match = WHITESPACE_RE.match(line_text)
+
+        if (match):
+            region_begin += len(match.group(0))
+
+        selected.add(sublime.Region(region_begin, region_begin))
+        # We have to force a move to update the cursor position
+        view.run_command('move', {'by': 'characters', 'forward': True})
+        view.run_command('move', {'by': 'characters', 'forward': False})
+        view.show_at_center(region_begin)
+
+    view.window().show_quick_panel(panel_items, on_done)
 
 
 def add_lint_marks(view, lines, error_underlines, violation_underlines, warning_underlines):
     '''Adds lint marks to view.'''
     vid = view.id()
     erase_lint_marks(view)
-    if warning_underlines:
-        view.add_regions('lint-underline-warning', warning_underlines, 'invalid.warning', sublime.DRAW_EMPTY_AS_OVERWRITE)
-    if violation_underlines:
-        view.add_regions('lint-underline-violation', violation_underlines, 'invalid.violation', sublime.DRAW_EMPTY_AS_OVERWRITE)
-    if error_underlines:
-        view.add_regions('lint-underline-illegal', error_underlines, 'invalid.illegal', sublime.DRAW_EMPTY_AS_OVERWRITE)
+    types = {'warning': warning_underlines, 'violation': violation_underlines, 'illegal': error_underlines}
+
+    for type_name, underlines in types.items():
+        if underlines:
+            view.add_regions('lint-underline-' + type_name, underlines, 'sublimelinter.underline.' + type_name, sublime.DRAW_EMPTY_AS_OVERWRITE)
+
     if lines:
         fill_outlines = view.settings().get('sublimelinter_fill_outlines', False)
-        gutter_mark = 'cross' if view.settings().get('sublimelinter_gutter_marks', False) else ''
+        gutter_mark_enabled = True if view.settings().get('sublimelinter_gutter_marks', False) else False
+
         outlines = {'warning': [], 'violation': [], 'illegal': []}
 
-        for line in lines:
-            if line in ERRORS[vid]:
-                outlines['illegal'].append(view.full_line(view.text_point(line, 0)))
-            elif line in WARNINGS[vid]:
-                outlines['warning'].append(view.full_line(view.text_point(line, 0)))
-            elif line in VIOLATIONS[vid]:
-                outlines['violation'].append(view.full_line(view.text_point(line, 0)))
+        for line in ERRORS[vid]:
+            outlines['illegal'].append(view.full_line(view.text_point(line, 0)))
+
+        for line in WARNINGS[vid]:
+            outlines['warning'].append(view.full_line(view.text_point(line, 0)))
+
+        for line in VIOLATIONS[vid]:
+            outlines['violation'].append(view.full_line(view.text_point(line, 0)))
 
         for lint_type in outlines:
             if outlines[lint_type]:
                 args = [
                     'lint-outlines-{0}'.format(lint_type),
                     outlines[lint_type],
-                    'sublimelinter.{0}'.format(lint_type),
-                    gutter_mark
+                    'sublimelinter.outline.{0}'.format(lint_type),
+                    MARKS[lint_type][gutter_mark_enabled]
                 ]
                 if not fill_outlines:
                     args.append(sublime.DRAW_OUTLINED)
@@ -141,13 +245,51 @@ def erase_lint_marks(view):
     view.erase_regions('lint-outlines-illegal')
     view.erase_regions('lint-outlines-violation')
     view.erase_regions('lint-outlines-warning')
+    view.erase_regions('lint-annotations')
 
 
-def get_lint_regions(view):
-    regions = view.get_regions('lint-outlines-illegal')
-    regions.extend(view.get_regions('lint-outlines-violation'))
-    regions.extend(view.get_regions('lint-outlines-warning'))
-    return regions
+def get_lint_regions(view, reverse=False, coalesce=False):
+    vid = view.id()
+    underlines = UNDERLINES.get(vid, [])[:]
+
+    if (coalesce):
+        # Each of these regions is one character, so transform it into the character points
+        points = sorted([region.begin() for region in underlines])
+
+        # Now coalesce adjacent characters into a single region
+        underlines = []
+        last_point = -999
+
+        for point in points:
+            if point != last_point + 1:
+                underlines.append(sublime.Region(point, point))
+            else:
+                region = underlines[-1]
+                underlines[-1] = sublime.Region(region.begin(), point)
+
+            last_point = point
+
+    # Now get all outlines, which includes the entire line where underlines are
+    outlines = view.get_regions('lint-outlines-illegal')
+    outlines.extend(view.get_regions('lint-outlines-violation'))
+    outlines.extend(view.get_regions('lint-outlines-warning'))
+    outlines.extend(view.get_regions('lint-annotations'))
+
+    # If an outline region contains an underline region, use only the underline
+    regions = underlines
+
+    for outline in outlines:
+        contains_underlines = False
+
+        for underline in underlines:
+            if outline.contains(underline):
+                contains_underlines = True
+                break
+
+        if not contains_underlines:
+            regions.append(outline)
+
+    return sorted(regions, key=lambda x: x.begin(), reverse=reverse)
 
 
 def select_lint_region(view, region):
@@ -169,7 +311,7 @@ def find_underline_within(view, region):
     underlines = view.get_regions('lint-underline-illegal')
     underlines.extend(view.get_regions('lint-underline-violation'))
     underlines.extend(view.get_regions('lint-underline-warning'))
-    underlines.sort(key=lambda x: x.a)
+    underlines.sort(key=lambda x: x.begin())
 
     for underline in underlines:
         if region.contains(underline):
@@ -190,14 +332,14 @@ def select_linter(view, ignore_disabled=False):
     lc_syntax = syntax.lower()
     language = None
     linter = None
+    syntaxMap = view.settings().get('sublimelinter_syntax_map', {})
 
-    if lc_syntax in LINTERS:
+    if syntax in syntaxMap:
+        language = syntaxMap[syntax]
+    elif lc_syntax in syntaxMap:
+        language = syntaxMap[lc_syntax]
+    elif lc_syntax in LINTERS:
         language = lc_syntax
-    else:
-        syntaxMap = view.settings().get('sublimelinter_syntax_map', {})
-
-        if syntax in syntaxMap:
-            language = syntaxMap[syntax]
 
     if language:
         if ignore_disabled:
@@ -226,13 +368,37 @@ def highlight_notes(view):
     '''highlight user-specified annotations in a file'''
     view.erase_regions('lint-annotations')
     text = view.substr(sublime.Region(0, view.size()))
-    regions = LINTERS['annotations'].run(view, text)
+    regions = LINTERS['annotations'].built_in_check(view, text, '')
 
     if regions:
         view.add_regions('lint-annotations', regions, 'sublimelinter.annotations', sublime.DRAW_EMPTY_AS_OVERWRITE)
 
 
-def queue_linter(linter, view, timeout, busy_timeout, preemptive=False):
+def _update_view(view, filename, **kwargs):
+    # It is possible that by the time the queue is run,
+    # the original file is no longer being displayed in the view,
+    # or the view may be gone. This happens especially when
+    # viewing files temporarily by single-clicking on a filename
+    # in the sidebar or when selecting a file through the choose file palette.
+    valid_view = False
+    view_id = view.id()
+
+    for window in sublime.windows():
+        for v in window.views():
+            if v.id() == view_id:
+                valid_view = True
+                break
+
+    if not valid_view or view.is_loading() or view.file_name() != filename:
+        return
+
+    try:
+        run_once(select_linter(view), view, **kwargs)
+    except RuntimeError, ex:
+        print ex
+
+
+def queue_linter(linter, view, timeout=-1, preemptive=False, event=None):
     '''Put the current view in a queue to be examined by a linter'''
     if linter is None:
         erase_lint_marks(view)  # may have changed file type and left marks behind
@@ -241,29 +407,32 @@ def queue_linter(linter, view, timeout, busy_timeout, preemptive=False):
         if not view.settings().get('sublimelinter_notes'):
             return
 
-    # user annotations could be present in all types of files
-    def _update_view(view):
-        linter = select_linter(view)
-        try:
-            background_run(linter, view)
-        except RuntimeError, ex:
-            print ex
+    if preemptive:
+        timeout = busy_timeout = 0
+    elif timeout == -1:
+        timeout, busy_timeout = get_delay(TIMES.get(view.id(), 100), view)
+    else:
+        busy_timeout = timeout
 
-    queue(view, _update_view, timeout, busy_timeout, preemptive)
+    kwargs = {'timeout': timeout, 'busy_timeout': busy_timeout, 'preemptive': preemptive, 'event': event}
+    queue(view, partial(_update_view, view, view.file_name(), **kwargs), kwargs)
+
+
+def _callback(view, filename, kwargs):
+    kwargs['callback'](view, filename, **kwargs)
 
 
 def background_linter():
     __lock_.acquire()
+
     try:
-        views = QUEUE.values()
+        callbacks = QUEUE.values()
         QUEUE.clear()
     finally:
         __lock_.release()
 
-    for view, callback, args, kwargs in views:
-        def _callback():
-            callback(view, *args, **kwargs)
-        sublime.set_timeout(_callback, 0)
+    for callback in callbacks:
+        sublime.set_timeout(callback, 0)
 
 ################################################################################
 # Queue dispatcher system:
@@ -288,18 +457,22 @@ def queue_loop():
         queue_dispatcher()
 
 
-def queue(view, callback, timeout, busy_timeout=None, preemptive=False, args=[], kwargs={}):
+def queue(view, callback, kwargs):
     global __signaled_, __signaled_first_
     now = time.time()
     __lock_.acquire()
 
     try:
-        QUEUE[view.id()] = (view, callback, args, kwargs)
+        QUEUE[view.id()] = callback
+        timeout = kwargs['timeout']
+        busy_timeout = kwargs['busy_timeout']
+
         if now < __signaled_ + timeout * 4:
             timeout = busy_timeout or timeout
 
         __signaled_ = now
-        _delay_queue(timeout, preemptive)
+        _delay_queue(timeout, kwargs['preemptive'])
+
         if not __signaled_first_:
             __signaled_first_ = __signaled_
             #print 'first',
@@ -335,6 +508,7 @@ def _delay_queue(timeout, preemptive):
             if time.time() < __signaled_:
                 return
             __semaphore_.release()
+
         sublime.set_timeout(_signal, timeout)
 
 
@@ -414,7 +588,7 @@ def lint_views(linter):
                 viewsToLint.append(view)
 
     for view in viewsToLint:
-        queue_linter(linter, view, 0, 0, True)
+        queue_linter(linter, view, preemptive=True)
 
 
 def reload_view_module(view):
@@ -426,6 +600,29 @@ def reload_view_module(view):
             MOD_LOAD.reload_module(module)
             lint_views(linter)
             break
+
+
+def settings_changed():
+    for window in sublime.windows():
+        for view in window.views():
+            linter = select_linter(view)
+
+            if (linter):
+                reload_settings(view)
+
+
+def reload_settings(view):
+    '''Restores user settings.'''
+    settings = sublime.load_settings(__name__ + '.sublime-settings')
+    settings.clear_on_change(__name__)
+    settings.add_on_change(__name__, settings_changed)
+
+    for setting in ALL_SETTINGS:
+        if settings.get(setting) != None:
+            view.settings().set(setting, settings.get(setting))
+
+    if view.settings().get('sublimelinter') == None:
+        view.settings().set('sublimelinter', True)
 
 
 class LintCommand(sublime_plugin.TextCommand):
@@ -452,6 +649,8 @@ class LintCommand(sublime_plugin.TextCommand):
             self.on()
         elif lc_action == 'load-save':
             self.enable_load_save()
+        elif lc_action == 'save-only':
+            self.enable_save_only()
         elif lc_action == 'off':
             self.off()
         elif action.lower() in LINTERS:
@@ -460,18 +659,21 @@ class LintCommand(sublime_plugin.TextCommand):
     def reset(self):
         '''Removes existing lint marks and restores user settings.'''
         erase_lint_marks(self.view)
-        settings = sublime.load_settings('Base File.sublime-settings')
-        self.view.settings().set('sublimelinter', settings.get('sublimelinter', True))
+        reload_settings(self.view)
 
     def on(self):
         '''Turns background linting on.'''
         self.view.settings().set('sublimelinter', True)
-        queue_linter(select_linter(self.view), self.view, 0, 0, True)
+        queue_linter(select_linter(self.view), self.view, preemptive=True)
 
     def enable_load_save(self):
         '''Turns load-save linting on.'''
         self.view.settings().set('sublimelinter', 'load-save')
-        print self.view.settings().get('sublimelinter')
+        erase_lint_marks(self.view)
+
+    def enable_save_only(self):
+        '''Turns save-only linting on.'''
+        self.view.settings().set('sublimelinter', 'save-only')
         erase_lint_marks(self.view)
 
     def off(self):
@@ -481,7 +683,6 @@ class LintCommand(sublime_plugin.TextCommand):
 
     def _run(self, name):
         '''runs an existing linter'''
-        self.view.settings().set('sublimelinter', False)
         run_once(LINTERS[name.lower()], self.view)
 
 
@@ -510,20 +711,25 @@ class BackgroundLinter(sublime_plugin.EventListener):
             erase_lint_marks(view)
             return
 
-        delay = get_delay(TIMES.get(view.id(), 100), view)
-        queue_linter(linter, view, *delay)
+        # Reset the last selected line number so that the current line will show error messages
+        # when update_statusbar is called.
+        self.lastSelectedLineNo = -1
+        queue_linter(linter, view)
 
     def on_load(self, view):
-        if view.is_scratch() or view.settings().get('sublimelinter') == False:
+        reload_settings(view)
+
+        if view.is_scratch() or view.settings().get('sublimelinter') == False or view.settings().get('sublimelinter') == 'save-only':
             return
-        background_run(select_linter(view), view)
+
+        queue_linter(select_linter(view), view, event='on_load')
 
     def on_post_save(self, view):
         if view.is_scratch() or view.settings().get('sublimelinter') == False:
             return
 
         reload_view_module(view)
-        background_run(select_linter(view), view)
+        queue_linter(select_linter(view), view, preemptive=True, event='on_post_save')
 
     def on_selection_modified(self, view):
         if view.is_scratch():
@@ -545,7 +751,13 @@ class FindLintErrorCommand(sublime_plugin.TextCommand):
         return select_linter(self.view) is not None
 
     def find_lint_error(self, forward):
-        regions = get_lint_regions(self.view)
+        linter = select_linter(self.view, ignore_disabled=True)
+
+        if not linter:
+            return
+
+        self.view.run_command('lint', linter.language)
+        regions = get_lint_regions(self.view, reverse=not forward, coalesce=True)
 
         if len(regions) == 0:
             sublime.error_message('No lint errors.')
@@ -559,15 +771,11 @@ class FindLintErrorCommand(sublime_plugin.TextCommand):
         # If going backward, find the first region ending before the point.
         # If nothing is found in the given direction, wrap to the first/last region.
         if forward:
-            regions.sort(key=lambda x: x.a)
-
             for index, region in enumerate(regions):
                 if point < region.begin():
                     regionToSelect = region
                     break
         else:
-            regions.sort(key=lambda x: x.a, reverse=True)
-
             for index, region in enumerate(regions):
                 if point > region.end():
                     regionToSelect = region
@@ -583,6 +791,8 @@ class FindLintErrorCommand(sublime_plugin.TextCommand):
             select_lint_region(self.view, regionToSelect)
         else:
             sublime.error_message('No {0} lint errors.'.format('next' if forward else 'previous'))
+
+        return regionToSelect
 
 
 class FindNextLintErrorCommand(FindLintErrorCommand):
@@ -640,7 +850,7 @@ class SublimelinterAnnotationsCommand(SublimelinterWindowCommand):
         filename = view.file_name()
         notes = linter.extract_annotations(text, view, filename)
         _, filename = os.path.split(filename)
-        annotations_view, _id = view_in_tab(view, 'Annotations from %s' % filename, notes, '')
+        annotations_view, _id = view_in_tab(view, 'Annotations from {0}'.format(filename), notes, '')
 
 
 class SublimelinterCommand(SublimelinterWindowCommand):
@@ -659,19 +869,22 @@ class SublimelinterCommand(SublimelinterWindowCommand):
 
         if view and action:
             if action == 'lint':
-                self.lint_view(view)
+                self.lint_view(view, show_popup_list=args.get('show_popup', False))
             else:
                 view.run_command('lint', action)
 
-    def lint_view(self, view):
+    def lint_view(self, view, show_popup_list):
         linter = select_linter(view, ignore_disabled=True)
 
         if linter:
             view.run_command('lint', linter.language)
-            regions = get_lint_regions(view)
+            regions = get_lint_regions(view, coalesce=True)
 
             if regions:
-                sublime.error_message('{0} lint error{1}.'.format(len(regions), 's' if len(regions) != 1 else ''))
+                if show_popup_list:
+                    popup_error_list(view)
+                else:
+                    sublime.error_message('{0} lint error{1}.'.format(len(regions), 's' if len(regions) != 1 else ''))
             else:
                 sublime.error_message('No lint errors.')
         else:
@@ -692,6 +905,11 @@ class SublimelinterLintCommand(SublimelinterCommand):
         return enabled
 
 
+class SublimelinterShowErrorsCommand(SublimelinterCommand):
+    def is_enabled(self):
+        return super(SublimelinterShowErrorsCommand, self).is_enabled()
+
+
 class SublimelinterEnableLoadSaveCommand(SublimelinterCommand):
     def is_enabled(self):
         enabled = super(SublimelinterEnableLoadSaveCommand, self).is_enabled()
@@ -705,6 +923,19 @@ class SublimelinterEnableLoadSaveCommand(SublimelinterCommand):
         return enabled
 
 
+class SublimelinterEnableSaveOnlyCommand(SublimelinterCommand):
+    def is_enabled(self):
+        enabled = super(SublimelinterEnableSaveOnlyCommand, self).is_enabled()
+
+        if enabled:
+            view = self.window.active_view()
+
+            if view and view.settings().get('sublimelinter') == 'save-only':
+                return False
+
+        return enabled
+
+
 class SublimelinterDisableCommand(SublimelinterCommand):
     def is_enabled(self):
         enabled = super(SublimelinterDisableCommand, self).is_enabled()
@@ -712,7 +943,7 @@ class SublimelinterDisableCommand(SublimelinterCommand):
         if enabled:
             view = self.window.active_view()
 
-            if view and not view.settings().get('sublimelinter') == True:
+            if view and view.settings().get('sublimelinter') == False:
                 return False
 
         return enabled

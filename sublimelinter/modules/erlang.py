@@ -29,9 +29,9 @@ eflymake = os.path.abspath(os.path.join(os.path.dirname(__file__), "libs/eflymak
 CONFIG = {
     'language': 'erlang',
     'executable': 'escript',
-    'lint_args': (eflymake, "{filename}"),
+    'lint_args': [eflymake, "{filename}"],
     'input_method': INPUT_METHOD_TEMP_FILE,
-    'tempfile_suffix': ".erl",
+  #  'tempfile_suffix': ".erl",
     'test_existence_args': ' ',
 }
 

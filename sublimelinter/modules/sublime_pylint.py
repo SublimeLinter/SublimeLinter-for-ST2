@@ -22,7 +22,7 @@ CONFIG = {
 
 
 class Linter(BaseLinter):
-    def get_executable(self):
+    def get_executable(self, view):
         return (PYLINT_AVAILABLE, None, 'built in' if PYLINT_AVAILABLE else 'the pylint module could not be imported')
 
     def built_in_check(self, view, code, filename):

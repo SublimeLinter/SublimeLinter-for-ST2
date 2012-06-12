@@ -17,12 +17,23 @@
                         [
                             {
                                 "command": "open_file",
-                                "args": {"file": "${packages}/SublimeLinter/Base File.sublime-settings"},
+                                "args": {"file": "${packages}/SublimeLinter/README.md"},
+                                "caption": "README"
+                            },
+                            {
+                                "command": "open_file",
+                                "args": {"file": "${packages}/SublimeLinter/changelog.txt"},
+                                "caption": "Change Log"
+                            },
+                            { "caption": "-" },
+                            {
+                                "command": "open_file",
+                                "args": {"file": "${packages}/SublimeLinter/SublimeLinter.sublime-settings"},
                                 "caption": "Settings – Default"
                             },
                             {
                                 "command": "open_file",
-                                "args": {"file": "${packages}/User/Base File.sublime-settings"},
+                                "args": {"file": "${packages}/User/SublimeLinter.sublime-settings"},
                                 "caption": "Settings – User"
                             },
                             {

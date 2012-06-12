@@ -28,12 +28,7 @@ class Linter(BaseLinter):
 
     def select_annotations(self, view):
         '''selects the list of annotations to use'''
-        annotations = view.settings().get("annotations")
-
-        if annotations is None:
-            return self.DEFAULT_NOTES
-        else:
-            return annotations
+        return view.settings().get("annotations", self.DEFAULT_NOTES)
 
     def extract_annotations(self, code, view, filename):
         '''extract all lines with annotations'''
@@ -64,7 +59,7 @@ class Linter(BaseLinter):
 
         for region in regions_with_notes:
             row, col = view.rowcol(region.begin())
-            text.append("[%s:%s]" % (filename, row + 1))
+            text.append("[{0}:{1}]".format(filename, row + 1))
             text.append(view.substr(region))
 
         return '\n'.join(text)
