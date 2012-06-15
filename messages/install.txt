@@ -23,7 +23,7 @@ For more information:
 ---------------------
 Please take the time to read the documentation:
 
-* Online - https://github.com/Kronuz/SublimeLinter/blob/master/README.md
+* Online - https://github.com/SublimeLinter/SublimeLinter
 * Sublime Text - Select Preferences->Package Settings->SublimeLinter->README
 
 
