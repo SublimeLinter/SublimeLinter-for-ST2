@@ -62,7 +62,11 @@ CONFIG = {
     'lint_args': None,
 
     # If an external executable is being used, the method used to pass input to it. Defaults to STDIN.
-    'input_method': INPUT_METHOD_STDIN
+    'input_method': INPUT_METHOD_STDIN,
+
+    # When using INPUT_METHOD_TEMP_FILE you may want to pass additional parameters to the tempfile
+    # such as suffix as some linters may require the file to have valid extension.
+    'tempfile_suffix': ""
 }
 
 TEMPFILES_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '.tempfiles'))
@@ -106,7 +110,7 @@ class BaseLinter(object):
 
         self.input_method = config.get('input_method', INPUT_METHOD_STDIN)
         self.filename = None
-        self.lint_args = config.get('lint_args', ())
+        self.lint_args = config.get('lint_args', [])
 
         if isinstance(self.lint_args, basestring):
             self.lint_args = (self.lint_args,)
@@ -150,7 +154,7 @@ class BaseLinter(object):
 
     def _get_lint_args(self, view, code, filename):
         if hasattr(self, 'get_lint_args'):
-            return self.get_lint_args(view, code, filename) or ()
+            return self.get_lint_args(view, code, filename) or []
         else:
             lintArgs = self.lint_args or []
             settings = view.settings().get('SublimeLinter', {}).get(self.language, {})
