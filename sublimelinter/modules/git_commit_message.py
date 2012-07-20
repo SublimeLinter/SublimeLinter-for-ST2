@@ -66,7 +66,7 @@ class Linter(BaseLinter):
                             'lineno': real_lineno,
                         })
             elif first_line_of_body is None:
-                if len(line):
+                if len(line) and not line.startswith('#'):
                     first_line_of_body = lineno
 
                     if lineno == first_line_of_message + 1:
