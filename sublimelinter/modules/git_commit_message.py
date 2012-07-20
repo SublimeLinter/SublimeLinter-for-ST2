@@ -31,20 +31,32 @@ class Linter(BaseLinter):
             if line.startswith('#'):
                 continue
 
+            if line.startswith('diff --git'):
+                break
+
             lineno += 1
 
             if first_line_of_message is None:
                 if line.strip():
                     first_line_of_message = lineno
 
-                    if len(line) > 50:
+                    if len(line) > 68:
                         errors.append({
-                            'message': 'Subject line must be 50 characters or less.',
+                            'type': ErrorType.ERROR,
+                            'message': 'Subject line must be 68 characters or less (github will truncate).',
+                            'lineno': real_lineno,
+                            'col': 68,
+                        })
+                    elif len(line) > 50:
+                        errors.append({
+                            'type': ErrorType.WARNING,
+                            'message': 'Subject line should be 50 characters or less.',
                             'lineno': real_lineno,
                             'col': 50,
                         })
                     elif lineno != 1:
                         errors.append({
+                            'type': ErrorType.ERROR,
                             'message': 'Subject must be on first line.',
                             'lineno': real_lineno,
                         })
