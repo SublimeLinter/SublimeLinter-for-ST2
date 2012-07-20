@@ -78,6 +78,7 @@
     // By deault, eval is allowed.
     "jshint_options":
     {
+        "indent": 1,
         "evil": true,
         "regexdash": true,
         "browser": true,
