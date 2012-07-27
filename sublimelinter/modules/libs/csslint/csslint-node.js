@@ -9124,3 +9124,5 @@ CSSLint.addFormatter({
 
 return CSSLint;
 })();
+
+exports.CSSLint = CSSLint;
