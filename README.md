@@ -181,6 +181,11 @@ You may also mark lines with errors by putting an "x" in the gutter with the use
 
     "sublimelinter_gutter_marks": true
 
+If you do so, you may want to disable drawing of outline boxes entirely so only
+the gutter marks are shown, using the user setting:
+
+    "sublimelinter_show_outlines": false
+
 To customize the colors used for highlighting errors and user notes, add the following
 to your theme (adapting the color to your liking):
 

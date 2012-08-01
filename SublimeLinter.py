@@ -61,6 +61,7 @@ ALL_SETTINGS = [
     'sublimelinter_disable',
     'sublimelinter_executable_map',
     'sublimelinter_fill_outlines',
+    'sublimelinter_outline_style',
     'sublimelinter_gutter_marks',
     'sublimelinter_notes',
     'sublimelinter_objj_check_ascii',
@@ -211,7 +212,7 @@ def add_lint_marks(view, lines, error_underlines, violation_underlines, warning_
             view.add_regions('lint-underline-' + type_name, underlines, 'sublimelinter.underline.' + type_name, sublime.DRAW_EMPTY_AS_OVERWRITE)
 
     if lines:
-        fill_outlines = view.settings().get('sublimelinter_fill_outlines', False)
+        outline_style = view.settings().get('sublimelinter_outline_style', 'outline')
         gutter_mark_enabled = True if view.settings().get('sublimelinter_gutter_marks', False) else False
 
         outlines = {'warning': [], 'violation': [], 'illegal': []}
@@ -233,7 +234,11 @@ def add_lint_marks(view, lines, error_underlines, violation_underlines, warning_
                     'sublimelinter.outline.{0}'.format(lint_type),
                     MARKS[lint_type][gutter_mark_enabled]
                 ]
-                if not fill_outlines:
+                if outline_style == 'none':
+                    args.append(sublime.HIDDEN)
+                elif outline_style == 'fill' or view.settings().get('sublimelinter_fill_outlines', False):
+                    pass  # outlines are filled by default
+                else:
                     args.append(sublime.DRAW_OUTLINED)
                 view.add_regions(*args)
 
