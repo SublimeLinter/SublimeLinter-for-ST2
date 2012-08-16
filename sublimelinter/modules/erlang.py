@@ -73,22 +73,29 @@ CONFIG = {
 
 class Linter(BaseLinter):
 
-    DEFAULT_INCLUDE_DIRS = [
-        "include",
-        "src"
-    ]
-
-    DEFAULT_CODE_PATH_DIRS = [
-        "ebin"
-    ]
-
     DEFAULT_COMPILER_OPTS = [
         "+warn_obsolete_guard",
         "+warn_unused_import",
         "+warn_shadow_vars",
         "+warn_export_vars",
         "+strong_validation",
-        "+report",
+        "+report"
+    ]
+
+    DEFAULT_INCLUDE_DIRS = [
+        "include",
+        "src",
+        "lib"
+    ]
+
+    DEFAULT_CODE_PATH_DIRS = [
+        "ebin"
+    ]
+
+    DEFAULT_DEPENDENCY_DIRS = [
+        "apps",
+        "deps",
+        "lib"
     ]
 
     LINE_RE = re.compile(r'^.+:(?P<line>\d+):\s(?P<warning>Warning:\s)?(?P<message>.+)$')
@@ -112,13 +119,13 @@ class Linter(BaseLinter):
             if code_path:
                 result.extend(["-pa", code_path])
 
-        # Basic Rebar deps support
-        deps_path = self.find_file_or_dir("deps", view)
-        if deps_path:
-            result.extend(["-I", deps_path])
-            # Add code path dir (ie ebin) of each dep
-            for dep_code_path_dir in glob.glob(os.path.join(deps_path, "*", "ebin")):
-                result.extend(["-pa", os.path.abspath(dep_code_path_dir)])
+        # Search for addtional include and code paths in depedencies
+        for dependecy_root_dir in self.DEFAULT_DEPENDENCY_DIRS:
+            dependecy_root = self.find_file_or_dir(dependecy_root_dir, view)
+            if dependecy_root:
+                result.extend(["-I", dependecy_root])
+                for code_path_dir in glob.glob(os.path.join(dependecy_root, "*", "ebin")):
+                    result.extend(["-pa", os.path.abspath(code_path_dir)])
 
         result.append(filename)
 
