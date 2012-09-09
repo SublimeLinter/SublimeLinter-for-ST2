@@ -28,7 +28,8 @@
         {
             "perl": "perl",
             "php": "php",
-            "ruby": "ruby"
+            "ruby": "ruby",
+            "lua": "luac"
         },
     */
     "sublimelinter_executable_map":
