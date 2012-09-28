@@ -221,7 +221,7 @@
  Uint32Array, Uint8Array, undef, undefs, unused, urls, validthis, value, valueOf, var, vars,
  version, verifyMaxParametersPerFunction, verifyMaxStatementsPerFunction,
  verifyMaxComplexityPerFunction, verifyMaxNestedBlockDepthPerFunction, WebSocket, withstmt, white,
- window, windows, Worker, worker, wsh*/
+ window, windows, Worker, worker, wsh, yui, YUI, Y, YUI_config*/
 
 /*global exports: false */
 
@@ -325,8 +325,9 @@ var JSHINT = (function () {
             withstmt    : true, // if with statements should be allowed
             white       : true, // if strict whitespace rules apply
             worker      : true, // if Web Worker script symbols should be allowed
-            wsh         : true  // if the Windows Scripting Host environment globals
+            wsh         : true, // if the Windows Scripting Host environment globals
                                 // should be predefined
+            yui         : true  // YUI variables should be predefined
         },
 
         // These are the JSHint options that can take any value
@@ -780,8 +781,13 @@ var JSHINT = (function () {
             WSH                       : true,
             WScript                   : true,
             XDomainRequest            : true
-        };
+        },
 
+        yui = {
+            YUI             : false,
+            Y               : false,
+            YUI_config      : false
+        };
     // Regular expressions. Some of these are stupidly long.
     var ax, cx, tx, nx, nxg, lx, ix, jx, ft;
     (function () {
@@ -1006,6 +1012,10 @@ var JSHINT = (function () {
         if (option.globalstrict && option.strict !== false) {
             option.strict = true;
         }
+
+        if (option.yui) {
+            combine(predefined, yui);
+        }
     }
 
 
@@ -1098,6 +1108,7 @@ var JSHINT = (function () {
 
         function nextLine() {
             var at,
+                match,
                 tw; // trailing whitespace check
 
             if (line >= lines.length)
@@ -1110,10 +1121,13 @@ var JSHINT = (function () {
             // If smarttabs option is used check for spaces followed by tabs only.
             // Otherwise check for any occurence of mixed tabs and spaces.
             // Tabs and one space followed by block comment is allowed.
-            if (option.smarttabs)
-                at = s.search(/ \t/);
-            else
+            if (option.smarttabs) {
+                // negative look-behind for "//"
+                match = s.match(/(\/\/)? \t/);
+                at = match && !match[1] ? 0 : -1;
+            } else {
                 at = s.search(/ \t|\t [^\*]/);
+            }
 
             if (at >= 0)
                 warningAt("Mixed spaces and tabs.", line, at + 1);
@@ -3559,10 +3573,11 @@ loop:   for (;;) {
                 }
             },
 
-            verifyMaxParametersPerFunction: function (parameters) {
-                if (option.maxparams &&
-                    parameters.length > option.maxparams) {
-                    var message = "Too many parameters per function (" + parameters.length + ").";
+            verifyMaxParametersPerFunction: function (params) {
+                params = params || [];
+
+                if (option.maxparams && params.length > option.maxparams) {
+                    var message = "Too many parameters per function (" + params.length + ").";
                     warning(message, functionStartToken);
                 }
             },
@@ -4480,12 +4495,16 @@ loop:   for (;;) {
                     }
                 });
             }
+
             optionKeys = Object.keys(o);
             for (x = 0; x < optionKeys.length; x++) {
                 newOptionObj[optionKeys[x]] = o[optionKeys[x]];
 
                 if (optionKeys[x] === "newcap" && o[optionKeys[x]] === false)
                     newOptionObj["(explicitNewcap)"] = true;
+
+                if (optionKeys[x] === "indent")
+                    newOptionObj.white = true;
             }
         }
 
