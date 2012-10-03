@@ -8,11 +8,13 @@ from base_linter import BaseLinter
 CONFIG = {
     'language': 'LaTeX',
     'executable': 'chktex',
-    'lint_args': ['-n1', '-n2', '-n3', "-f%l:%c %k %m\n"]
 }
 
 
 class Linter(BaseLinter):
+    def get_lint_args(self, view, code, filename):
+        view.settings().get("chktex_options", []) + ["-f%l:%c %k %m\n"]
+
     def parse_errors(self, view, errors, lines, errorUnderlines, violationUnderlines, warningUnderlines, errorMessages, violationMessages, warningMessages):
         for line in errors.splitlines():
             match = re.match(r'^(?P<line>\d+):(?P<column>\d+) (?P<type>[^\s]+) (?P<error>.+)', line)
