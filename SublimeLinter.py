@@ -45,6 +45,7 @@ MARKS = {
 # only these are inherited from SublimeLinter.sublime-settings
 ALL_SETTINGS = [
     'annotations',
+    'chktex_options',
     'csslint_options',
     'gjslint_ignore',
     'gjslint_options',
