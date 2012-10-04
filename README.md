@@ -15,6 +15,7 @@ SublimeLinter has built in linters for the following languages:
 * HTML - lint via `tidy` (actually [tidy for HTML5](http://w3c.github.com/tidy-html5/))
 * Java - lint via `javac -Xlint`
 * Javascript - lint via built in [jshint](http://jshint.org), [jslint](http://jslint.com), or the [closure linter (gjslint)](https://developers.google.com/closure/utilities/docs/linter_howto) (if installed)
+* LaTeX - lint via `chktex`
 * Objective-J - lint via built-in [capp_lint](https://github.com/aparajita/capp_lint)
 * Perl - lint via [Perl:Critic](http://perlcritic.com/) or syntax+deprecation checking via `perl -c`
 * PHP - syntax checking via `php -l`
