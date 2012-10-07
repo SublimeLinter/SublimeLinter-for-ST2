@@ -18,5 +18,11 @@ class Linter(BaseLinter):
             match = re.match(r'^.+:(?P<line>\d+):\s+(?P<error>.+)', line)
 
             if match:
-                error, line = match.group('error'), match.group('line')
-                self.add_message(int(line), lines, error, errorMessages)
+                message, line = match.group('error'), match.group('line')
+
+                if re.match(r'\Awarning:', message):
+                    messages = warningMessages
+                else:
+                    messages = errorMessages
+
+                self.add_message(int(line), lines, message, messages)
