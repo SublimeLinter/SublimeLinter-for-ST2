@@ -21887,5 +21887,12 @@ var BatchCompiler = (function () {
     };
     return BatchCompiler;
 })();
-var batch = new BatchCompiler(IO);
-batch.batchCompile();
+
+//var batch = new BatchCompiler(IO);
+//batch.batchCompile();
+
+exports.TypeScript = TypeScript;
+exports.BatchCompiler = BatchCompiler;
+exports.IO = IO;
+exports.OptionsParser = OptionsParser;
+exports.CommandLineHost = CommandLineHost;
