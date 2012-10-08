@@ -90,7 +90,14 @@ Following are notes specific to individual linters that you should be aware of:
 
 * **perl** - Due to a vulnerability (issue [#77](https://github.com/SublimeLinter/SublimeLinter/issues/77)) with the Perl linter, Perl syntax checking is no longer enabled by default. The default linter for Perl has been replaced by Perl::Critic. The standard Perl syntax checker can still be invoked by switching the "perl_linter" setting to "perl".
 
-* **ruby** - If you are using rvm or rbenv, you will probably have to specify the full path to the ruby you are using in the "sublimelinter_executable_map" setting. See "Configuring" below for more info.
+* **ruby** - If you are using RVM, add the following key to the settings file:
+
+        "sublimelinter_executable_map": {
+          "ruby": "rvm-auto-ruby"
+        }
+
+    If you are using rbenv, you will probably have to specify the full path to the ruby you are using in the **sublimelinter_executable_map** setting. 
+
 
 * **java** - Because it uses `javac` to do linting, each time you run the linter the entire dependency graph of the current file will be checked. Depending on the number of classes you import, this can be **extremely** slow. Also note that you **must** provide the `-sourcepath`, `-classpath`, `-Xlint` and `{filename}` arguments to `javac` in your per-project settings. See "Per-project settings" below for more information.
 
