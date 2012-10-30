@@ -56,6 +56,7 @@ ALL_SETTINGS = [
     'perl_linter',
     'pyflakes_ignore',
     'pyflakes_ignore_import_*',
+    'coffeelint_options',
     'sublimelinter',
     'sublimelinter_delay',
     'sublimelinter_disable',
