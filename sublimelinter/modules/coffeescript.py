@@ -34,11 +34,12 @@ def write_config_file(config):
     variables to the program. this function writes a configuration file to
     hold them and returns the location of the file
     """
-    temp_file_name = os.path.join(TEMPFILES_DIR, 'coffeelint')
+    temp_file_name = os.path.join(TEMPFILES_DIR, 'coffeelint.json')
     temp_file = open(temp_file_name, 'w')
     temp_file.write(
         simplejson.dumps(config, separators=(',', ':'))
     )
+    temp_file.close()
     return temp_file_name
 
 
@@ -103,7 +104,9 @@ class Linter(BaseLinter):
             ]
 
             if self.coffeelint_config != {}:
-                options += ['--file ' + self.coffeelint_config_file]
+                print self.coffeelint_config_file
+                options += ['--file', self.coffeelint_config_file]
+                print options
 
             process = Popen(options, stdin=PIPE, stdout=PIPE, stderr=PIPE)
             errors, stderrdata = process.communicate(code)  # send data to coffeelint binary
@@ -119,7 +122,7 @@ class Linter(BaseLinter):
                      violationMessages, warningMessages):
 
         for line in errors.splitlines():
-            print line
+            #print line
             match = re.match(
                 r'(?:stdin,1,error,)?Error: Parse error on line (?P<line>\d+): (?P<error>.+)',
                 line
@@ -148,6 +151,6 @@ class Linter(BaseLinter):
 
                 grp = errorMessages if error_type == 'error' else warningMessages
 
-                print '-------------------------------'
-                print (line_num, error_text)
+                #print '-------------------------------'
+                #print (line_num, error_text)
                 self.add_message(line_num, lines, error_text, grp)
