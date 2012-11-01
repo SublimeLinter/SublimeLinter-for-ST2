@@ -104,9 +104,7 @@ class Linter(BaseLinter):
             ]
 
             if self.coffeelint_config != {}:
-                print self.coffeelint_config_file
                 options += ['--file', self.coffeelint_config_file]
-                print options
 
             process = Popen(options, stdin=PIPE, stdout=PIPE, stderr=PIPE)
             errors, stderrdata = process.communicate(code)  # send data to coffeelint binary
@@ -122,7 +120,6 @@ class Linter(BaseLinter):
                      violationMessages, warningMessages):
 
         for line in errors.splitlines():
-            #print line
             match = re.match(
                 r'(?:stdin,1,error,)?Error: Parse error on line (?P<line>\d+): (?P<error>.+)',
                 line
@@ -150,7 +147,4 @@ class Linter(BaseLinter):
                     error_type = None
 
                 grp = errorMessages if error_type == 'error' else warningMessages
-
-                #print '-------------------------------'
-                #print (line_num, error_text)
                 self.add_message(line_num, lines, error_text, grp)
