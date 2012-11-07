@@ -24,7 +24,7 @@
 			"platforms": {
 				"*": [
 					{
-						"version": "1.7.0-beta",
+						"version": "1.7.0-beta.1",
 						"url": "https://nodeload.github.com/SublimeLinter/SublimeLinter/zipball/beta"
 					}
 				]
