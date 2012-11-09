@@ -180,6 +180,16 @@
     ],
 
     /*
+        Options:
+            executable: the phpcs exectuable
+            ignore: list of options to ignore
+            standards: list of standards to check against
+     */
+    "phpcs_options":
+    [
+    ],
+
+    /*
         If you use SublimeLinter for pyflakes checks, you can ignore some of the "undefined name xxx"
         errors (comes in handy if you work with post-processors, globals/builtins available only at runtime, etc.).
         You can control what names will be ignored with the user setting "pyflakes_ignore".
