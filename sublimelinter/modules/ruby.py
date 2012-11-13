@@ -6,7 +6,7 @@ import re
 from base_linter import BaseLinter
 
 CONFIG = {
-    'language': 'ruby',
+    'language': 'Ruby',
     'executable': 'ruby',
     'lint_args': '-wc'
 }

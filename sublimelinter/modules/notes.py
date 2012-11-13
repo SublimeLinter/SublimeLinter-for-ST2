@@ -10,7 +10,7 @@ import sublime
 from base_linter import BaseLinter
 
 CONFIG = {
-    'language': 'annotations'
+    'language': 'Annotations'
 }
 
 

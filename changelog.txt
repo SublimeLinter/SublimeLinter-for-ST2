@@ -203,3 +203,195 @@ CHANGES/FIXES
 - Added additional debugging output (in Sublime console) when
   errors occur running linters written in Javascript.
 
+
+SublimeLinter 1.6.2 changelog
+=============================
+CHANGES/FIXES
+
+- Replaced the default perl linter with Perl::Critic. The standard Perl syntax checker
+  can still be invoked by switching the "perl_linter" setting to "perl".
+
+- Added a LICENSE file to define appropriate usage of SublimeLinter and its source.
+
+- Converted README back to markdown.
+
+
+IMPORTANT
+
+Due to a vulnerability (issue #77) with the Perl linter, Perl syntax checking is no longer
+enabled by default. The default linter for Perl has been replaced by Perl::Critic.
+
+
+SublimeLinter 1.6.3 changelog
+=============================
+NEW FEATURES
+
+- Support for `.jshintrc` files. If using JSHint, SublimeLinter
+  will recursively search the directory tree (from the file location
+  to the file-system root directory). This functionality is
+  specified in the JSHint README.
+  https://github.com/jshint/node-jshint/#within-your-projects-directory-tree
+
+
+CHANGES/FIXES
+
+- Fixed README reference in the menu.
+
+- Updated CoffeeScript module to be compatible with the updated
+  coffee command in version 1.3.
+
+
+IMPORTANT
+
+If you are using the CoffeeScript linting, please upgrade
+the installed coffee-script NPM module to 1.3 or greater.
+
+    npm update -g coffee-script
+
+
+SublimeLinter 1.6.4 changelog
+=============================
+
+IMPORTANT!!
+
+Please note that the SublimeLinter repository has moved to:
+
+  https://github.com/SublimeLinter/SublimeLinter
+
+Issues and pull requests should be made there.
+
+
+NEW FEATURES
+
+- The Objective-J linter now catches spaces inside parentheses
+  and dependent clauses on the same line as a control structure.
+
+
+CHANGES/FIXES
+
+- The README has been reorganized to hopefully be clearer.
+
+- More explicit Node.js installation instructions have been provided.
+
+- The "pep8" setting is now recognized in SublimeLinter's settings.
+
+- When a minimum delay is specified with the "sublimelinter_delay" setting,
+  SublimeLinter will only lint the currently displayed file when the
+  queued linters run. This allows you to avoid linting of files as they
+  are selected in the choose file palette.
+
+
+SublimeLinter 1.6.5 changelog
+=============================
+
+NEW FEATURES
+
+- Added a (Ruby) Haml linter based on `haml -c`. For more information about
+  Haml, please see http://haml.info.
+
+- Added a simple Git commit message linter. This linter follows the rules as
+  defined by http://tbaggery.com/2008/04/19/a-note-about-git-commit-messages.html
+
+
+CHANGES/FIXES
+
+- Updated several links to point to the SublimeLinter's new Github location.
+
+- "Ruby on Rails" syntax maps to "ruby" as part of the default settings.
+
+- Linter arguments are now consistently defined as arrays (instead of tuples).
+
+- Syntax map settings are no longer (sometimes) case-sensitive.
+
+
+SublimeLinter 1.6.6 changelog
+=============================
+
+CHANGES/FIXES
+
+- JSHint now shows underlines at the appropriate character positions when
+  using tabs for indentation.
+
+- Upgrading CSSLint to the latest version (v0.9.8). This adds support for the
+  latest "Compatibility" options: "Disallow star hack" and "Disallow
+  underscore hack".
+
+- Annotation highlighting is working again.
+
+- Git Commit Message linting now ignores `git --diff` output in messages.
+  These lines are automatically generated and inserted when running
+  `git commit -v`.
+
+
+SublimeLinter 1.6.7 changelog
+=============================
+
+NEW FEATURES
+
+- Puppet linting is now supported via `puppet parser validate`.
+
+- Added an option for more granular control of outline decorations. Set the
+  value of "sublimelinter_mark_style" to "outline", "fill", or "none" in
+  the user settings.
+
+
+CHANGES/FIXES
+
+- Repaired the built-in CSS linter (CSSLint). This was broken with with the
+  last update.
+
+- Added missing documentation for "save-only" linting in the settings file.
+
+- Adjusted ambiguous/misleading documentation for the
+  "sublimelinter_executable_map" setting.
+
+
+SublimeLinter 1.6.8 changelog
+=============================
+
+NEW FEATURES
+
+- HTML5 linting support via `tidy`. This linter will not run unless you have
+  a version of tidy with HTML5 support. To use this linter, please see:
+  https://github.com/w3c/tidy-html5
+
+- XML linting via `xmllint`.
+
+
+CHANGES/FIXES
+
+- Made significant progress on issue (#181). However, SublimeLinter still
+  throws with some linter types on Windows 7 when a user has non-ascii
+  characters in the path (to the SL plugin).
+
+- Updated PEP8 to v1.1
+
+- Updated Pyflakes to v0.5.0
+
+- Updated JSHint to latest stable (r11).
+
+- Reverted a fix for accurate (JSHint) error column positions (when using tab
+  indentation) due to a regression with the `"white": true` option. You may
+  still manually fix error positions by setting `"indent": 1`.
+
+- Changed (the default) background linting delay to a more sane 2 seconds.
+  This reduces memory usage, cpu processing, and visual noise while you are
+  actively writing code.
+
+
+SublimeLinter 1.6.9 changelog
+=============================
+
+NEW FEATURES
+
+- C/C++ lint via `cppcheck`. Also added alternative (hidden) support for
+  `cpplint.py`. Please see README for more info.
+
+- Lua syntax check via `luac`.
+
+
+CHANGES/FIXES
+
+- Adding a 'beta' channel for SublimeLinter into Package Control. This
+  branch will act as a more formal method for testing new features and
+  fixes before a release.

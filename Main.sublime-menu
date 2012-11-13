@@ -17,7 +17,7 @@
                         [
                             {
                                 "command": "open_file",
-                                "args": {"file": "${packages}/SublimeLinter/README.rst"},
+                                "args": {"file": "${packages}/SublimeLinter/README.md"},
                                 "caption": "README"
                             },
                             {

@@ -10,22 +10,22 @@
         "args": {"action": "lint", "show_popup": true}
     },
     {
-        "caption": "SublimeLinter: Enable Background Linting",
+        "caption": "SublimeLinter: Background Linting",
         "command": "sublimelinter_lint",
         "args": {"action": "on"}
     },
     {
-        "caption": "SublimeLinter: Enable Load-Save Linting",
+        "caption": "SublimeLinter: Load-Save Linting",
         "command": "sublimelinter_enable_load_save",
         "args": {"action": "load-save"}
     },
     {
-        "caption": "SublimeLinter: Enable Save-Only Linting",
+        "caption": "SublimeLinter: Save-Only Linting",
         "command": "sublimelinter_enable_save_only",
         "args": {"action": "save-only"}
     },
     {
-        "caption": "SublimeLinter: Disable Background Linting",
+        "caption": "SublimeLinter: Disable Linting",
         "command": "sublimelinter_disable",
         "args": {"action": "off"}
     },

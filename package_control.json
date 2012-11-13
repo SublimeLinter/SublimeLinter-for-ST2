@@ -5,13 +5,27 @@
 			"name": "SublimeLinter",
 			"description": "Inline lint highlighting for the Sublime Text 2 editor",
 			"author": "Kronuz, Aparajita Fishman, Jake Swartwood",
-			"homepage": "http://github.com/Kronuz/SublimeLinter",
-			"last_modified": "2012-04-16 15:49:15",
+			"homepage": "http://github.com/SublimeLinter/SublimeLinter",
+			"last_modified": "2012-10-15 00:19:27",
 			"platforms": {
 				"*": [
 					{
-						"version": "1.6.1",
-						"url": "https://nodeload.github.com/Kronuz/SublimeLinter/zipball/v1.6.1"
+						"version": "1.6.9",
+						"url": "https://nodeload.github.com/SublimeLinter/SublimeLinter/zipball/v1.6.9"
+					}
+				]
+			}
+		},
+		{
+			"name": "SublimeLinter Beta",
+			"description": "This version is considered unstable; only install this package if you plan on testing",
+			"author": "Kronuz, Aparajita Fishman, Jake Swartwood",
+			"homepage": "https://github.com/SublimeLinter/SublimeLinter/tree/beta",
+			"platforms": {
+				"*": [
+					{
+						"version": "1.7.0-beta.1",
+						"url": "https://nodeload.github.com/SublimeLinter/SublimeLinter/zipball/beta"
 					}
 				]
 			}

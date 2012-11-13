@@ -8,7 +8,7 @@ import re
 from base_linter import BaseLinter, INPUT_METHOD_FILE
 
 CONFIG = {
-    'language': 'java',
+    'language': 'Java',
     'executable': 'javac',
     'test_existence_args': '-version',
     'input_method': INPUT_METHOD_FILE
