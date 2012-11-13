@@ -146,6 +146,10 @@ class Linter(BaseLinter):
                 code = super(pep8.StandardReport, self).error(line_number,
                                                               offset,
                                                               text, check)
+                if not code:
+                    # code ignored
+                    return
+
                 msg = text[5:]
 
                 if code.startswith('E'):
@@ -155,11 +159,10 @@ class Linter(BaseLinter):
                     messages.append(
                         Pep8Warning(filename, line_number, offset, code, msg))
 
-            pep8.Checker.report_error = report_error
-            _ignore = ignore + pep8.DEFAULT_IGNORE.split(',')
-
             pep8.StandardReport.error = report_error
-            options = pep8.StyleGuide(reporter=pep8.StandardReport).options
+            ignore = ignore + pep8.DEFAULT_IGNORE.split(',')
+            options = pep8.StyleGuide(
+                reporter=pep8.StandardReport, ignore=ignore).options
 
             options.max_line_length = pep8.MAX_LINE_LENGTH
 
@@ -171,7 +174,6 @@ class Linter(BaseLinter):
 
             try:
                 p = pep8.Checker(filename, good_lines, options)
-                p.ignore = _ignore
                 p.check_all()
             except Exception, e:
                 print "An exception occured when running pep8 checker: %s" % e
