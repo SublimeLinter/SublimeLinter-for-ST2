@@ -126,7 +126,7 @@ class Linter(BaseLinter):
             return [PythonError(filename, 0, e.args[0])]
         else:
             # Okay, it's syntactically valid.  Now check it.
-            if ignore_globals:
+            if ignore_globals is not None:
                 old_magic_globals = pyflakes._MAGIC_GLOBALS
                 pyflakes._MAGIC_GLOBALS += ignore_globals
             w = pyflakes.Checker(tree, filename)
