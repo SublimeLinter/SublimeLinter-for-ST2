@@ -7,7 +7,7 @@ import subprocess
 from base_linter import BaseLinter
 
 CONFIG = {
-    'language': 'perl'
+    'language': 'Perl'
 }
 
 

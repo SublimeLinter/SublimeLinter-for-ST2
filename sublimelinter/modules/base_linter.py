@@ -65,7 +65,7 @@ CONFIG = {
     'input_method': INPUT_METHOD_STDIN
 }
 
-TEMPFILES_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '.tempfiles'))
+TEMPFILES_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__.encode('utf-8')), u'..', u'.tempfiles'))
 
 JSON_MULTILINE_COMMENT_RE = re.compile(r'\/\*[\s\S]*?\*\/')
 JSON_SINGLELINE_COMMENT_RE = re.compile(r'\/\/[^\n\r]*')
@@ -88,7 +88,7 @@ class BaseLinter(object):
 
     JSC_PATH = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/A/Resources/jsc'
 
-    LIB_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), 'libs'))
+    LIB_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__.encode('utf-8')), u'libs'))
 
     JAVASCRIPT_ENGINES = ['node', 'jsc']
     JAVASCRIPT_ENGINE_NAMES = {'node': 'node.js', 'jsc': 'JavaScriptCore'}
@@ -98,7 +98,7 @@ class BaseLinter(object):
         self.language = config['language']
         self.enabled = False
         self.executable = config.get('executable', None)
-        self.test_existence_args = config.get('test_existence_args', ('-v',))
+        self.test_existence_args = config.get('test_existence_args', ['-v'])
         self.js_engine = None
 
         if isinstance(self.test_existence_args, basestring):
@@ -106,10 +106,10 @@ class BaseLinter(object):
 
         self.input_method = config.get('input_method', INPUT_METHOD_STDIN)
         self.filename = None
-        self.lint_args = config.get('lint_args', ())
+        self.lint_args = config.get('lint_args', [])
 
         if isinstance(self.lint_args, basestring):
-            self.lint_args = (self.lint_args,)
+            self.lint_args = [self.lint_args]
 
     def check_enabled(self, view):
         if hasattr(self, 'get_executable'):
@@ -150,7 +150,7 @@ class BaseLinter(object):
 
     def _get_lint_args(self, view, code, filename):
         if hasattr(self, 'get_lint_args'):
-            return self.get_lint_args(view, code, filename) or ()
+            return self.get_lint_args(view, code, filename) or []
         else:
             lintArgs = self.lint_args or []
             settings = view.settings().get('SublimeLinter', {}).get(self.language, {})
@@ -159,7 +159,7 @@ class BaseLinter(object):
                 args = settings.get('lint_args', [])
                 lintArgs.extend(args)
 
-                cwd = settings.get('working_directory')
+                cwd = settings.get('working_directory').encode('utf-8')
 
                 if cwd and os.path.isabs(cwd) and os.path.isdir(cwd):
                     os.chdir(cwd)
@@ -180,7 +180,7 @@ class BaseLinter(object):
             if filename:
                 filename = os.path.basename(filename)
             else:
-                filename = 'view{0}'.format(view.id())
+                filename = u'view{0}'.format(view.id())
 
             tempfilePath = os.path.join(TEMPFILES_DIR, filename)
 
@@ -188,14 +188,14 @@ class BaseLinter(object):
                 f.write(code)
 
             args.extend(self._get_lint_args(view, code, tempfilePath))
-            code = ''
+            code = u''
 
         elif self.input_method == INPUT_METHOD_FILE:
             args.extend(self._get_lint_args(view, code, filename))
-            code = ''
+            code = u''
 
         else:
-            return ''
+            return u''
 
         try:
             process = subprocess.Popen(args,
@@ -203,7 +203,8 @@ class BaseLinter(object):
                                        stdout=subprocess.PIPE,
                                        stderr=subprocess.STDOUT,
                                        startupinfo=self.get_startupinfo())
-            result = process.communicate(code)[0]
+            process.stdin.write(code)
+            result = process.communicate()[0]
         finally:
             if tempfilePath:
                 os.remove(tempfilePath)
@@ -299,7 +300,7 @@ class BaseLinter(object):
             lang = self.language.lower()
 
             if lang in map:
-                return map[lang]
+                return map[lang].encode('utf-8')
 
         return default
 
@@ -327,7 +328,7 @@ class BaseLinter(object):
     def find_file(self, filename, view):
         '''Find a file with the given name, starting in the view's directory,
            then ascending the file hierarchy up to root.'''
-        path = view.file_name()
+        path = view.file_name().encode('utf-8')
 
         # quit if the view is temporary
         if not path:
@@ -366,9 +367,9 @@ class BaseLinter(object):
         engine = self.js_engine
 
         if (engine['name'] == 'jsc'):
-            args = (engine['wrapper'], '--', path + os.path.sep, str(code.count('\n')), options)
+            args = [engine['wrapper'], '--', path + os.path.sep, str(code.count('\n')), options]
         else:
-            args = (engine['wrapper'], path + os.path.sep, options)
+            args = [engine['wrapper'], path + os.path.sep, options]
 
         return args
 
@@ -384,7 +385,7 @@ class BaseLinter(object):
                 if engine == 'node':
                     try:
                         path = self.get_mapped_executable(view, 'node')
-                        subprocess.call([path, '-v'], startupinfo=self.get_startupinfo())
+                        subprocess.call([path, u'-v'], startupinfo=self.get_startupinfo())
                         self.js_engine = {
                             'name': engine,
                             'path': path,

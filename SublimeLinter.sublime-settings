@@ -8,14 +8,19 @@
         true - Linting occurs in the background as you type (the default).
         false - Linting only occurs when you initiate it.
         "load-save" - Linting occurs only when a file is loaded and saved.
+        "save-only" - Linting occurs only when a file is saved.
     */
     "sublimelinter": true,
 
     /*
-        Maps linters to executables for non-built in linters. If the executable
-        is not in the default system path, or on posix systems in /usr/local/bin
-        or ~/bin, then you must specify the full path to the executable.
-        Linter names should be lowercase.
+        Maps language names **as listed at the beginning of the README** (but all lowercase)
+        to executables for non-built in linters. If the executable is not in the default system path,
+        or on posix systems is not in /usr/local/bin or ~/bin, then you must specify
+        the full path to the executable. Note that paths in Windows must use double
+        backslashes, for example "C:\\Program Files (x86)\\nodejs\\node.exe".
+
+        Please note that the map _keys_ do not always match the name of the
+        executable, but rather the language syntax for the executable to lint.
 
         This is the effective default map; your mappings may override these.
 
@@ -33,12 +38,16 @@
     /*
         Maps syntax names to linters. This allows variations on a syntax
         (for example "Python (Django)") to be linted. The key is
-        the base filename of the .tmLanguage syntax file, and the value
-        is the linter name (lowercase) the syntax maps to.
+        the name of the syntax **as it appears in the syntax list
+        at the bottom right of the window**, and the value
+        is the linter name **as listed in the README** (all lowercase)
+        that the syntax maps to.
     */
     "sublimelinter_syntax_map":
     {
-        "Python Django": "python"
+        "Python Django": "python",
+        "Ruby on Rails": "ruby",
+        "C++": "c"
     },
 
     // An array of linter names to disable. Names should be lowercase.
@@ -54,9 +63,25 @@
         errors are erased when the file is modified, since the assumption is
         you don't want to see errors while you type.
     */
-    "sublimelinter_delay": 0,
+    "sublimelinter_delay": 2,
 
-    // If true, lines with errors or warnings will be filled in with the outline color.
+    /*
+        Selects the way the lines with errors or warnings are marked; "outline"
+        (default) draws outline boxes around the lines, "fill" fills the lines
+        with the outline color, and "none" disables all outline styles
+        (useful if "sublimelinter_gutter_marks" is set).
+    */
+    "sublimelinter_mark_style": "outline",
+
+    /*
+        If true, lines with errors or warnings will be filled in with the
+        outline color.
+
+        This setting is DEPRECATED and will be ignored in future
+        versions. Use "sublimelinter_mark_style" instead. For backwards
+        compatibility reasons, this setting overrides "sublimelinter_mark_style"
+        if that one is set to "outline", but has no effect if it's set to "none".
+    */
     "sublimelinter_fill_outlines": false,
 
     // If true, lines with errors or warnings will have a gutter mark.
@@ -72,10 +97,14 @@
     // or either "jshint" or "jslint" to use a built in linter.
     "javascript_linter": "jshint",
 
-    // jshint: options for linting JavaScript. See http://jshint.com/#docs for more info.
+    // jshint: options for linting JavaScript. See http://www.jshint.com/options/ for more info.
     // By deault, eval is allowed.
     "jshint_options":
     {
+        // To fix column positions for JSHint errors you may want to add `"indent": 1` to your
+        // **User** "jshint_options". This issue affects users with tabs for indentation.
+        // This fix was reverted due to a conflict with using the `"white": true` option.
+        // "indent": 1,
         "evil": true,
         "regexdash": true,
         "browser": true,
@@ -128,16 +157,23 @@
         "regex-selectors": "warning",
         "rules-count": "warning",
         "shorthand": "warning",
+        "star-property-hack": "warning",
         "text-indent": "warning",
+        "underscore-property-hack": "warning",
         "unique-headings": "warning",
         "universal-selector": "warning",
         "vendor-prefix": true,
         "zero-units": "warning"
     },
 
-    // A list of pep8 error numbers to ignore. By default "line too long" errors are ignored.
-    // The list of error codes is in this file: https://github.com/jcrocholl/pep8/blob/master/pep8.py.
-    // Search for "Ennn:", where nnn is a 3-digit number.
+    // Set this to false to turn pep8 checking off completely
+    "pep8": true,
+
+    /*
+        A list of pep8 error numbers to ignore. By default "line too long" errors are ignored.
+        The list of error codes is in this file: https://github.com/jcrocholl/pep8/blob/master/pep8.py.
+        Search for "Ennn:", where nnn is a 3-digit number.
+    */
     "pep8_ignore":
     [
         "E501"
@@ -181,10 +217,11 @@
     */
     "pyflakes_ignore": "# pyflakes.ignore",
 
-    // Perl linter: "perl" to use the Perl language syntax check,
-    // or "perlcritic" to use Perl::Critic linting.
-    // Perl is now set to use "perlcritic" by default due to a vulnerability with blindly running `perl -c`
-    // on files with `BEGIN` or `CHECK` blocks (see issue #77: https://github.com/Kronuz/SublimeLinter/issues/77).
+    /*
+        Perl linter: "perl" to use the Perl language syntax check, or "perlcritic" to use Perl::Critic linting.
+        Perl is now set to use "perlcritic" by default due to a vulnerability with blindly running `perl -c`
+        on files with `BEGIN` or `CHECK` blocks.
+    */
     "perl_linter": "perlcritic",
 
     // Objective-J: if true, non-ascii characters are flagged as an error.

@@ -8,22 +8,29 @@ can be quickly located.
 
 SublimeLinter has built in linters for the following languages:
 
+* C/C++ - lint via `cppcheck`
 * CoffeeScript - lint via `coffee -s -l`
 * CSS - lint via built-in [csslint](http://csslint.net)
-* java - lint via `javac -Xlint`
+* Git Commit Messages - lint via built-in module based on [A Note About Git Commit Messages](http://tbaggery.com/2008/04/19/a-note-about-git-commit-messages.html).
+* Haml - syntax check via `haml -c`
+* HTML - lint via `tidy` (actually [tidy for HTML5](http://w3c.github.com/tidy-html5/))
+* Java - lint via `javac -Xlint`
 * Javascript - lint via built in [jshint](http://jshint.org), [jslint](http://jslint.com), or the [closure linter (gjslint)](https://developers.google.com/closure/utilities/docs/linter_howto) (if installed)
+* Lua - syntax check via `luac`
 * Objective-J - lint via built-in [capp_lint](https://github.com/aparajita/capp_lint)
-* perl - lint via [Perl:Critic](http://perlcritic.com/) or syntax+deprecation checking via `perl -c`
-* php - syntax checking via `php -l`
-* python - native, moderately-complete lint
-* ruby - syntax checking via `ruby -wc`
+* Perl - lint via [Perl:Critic](http://perlcritic.com/) or syntax+deprecation check via `perl -c`
+* PHP - syntax check via `php -l`
+* Puppet - syntax check via `puppet parser validate`
+* Python - native, moderately-complete lint
+* Ruby - syntax check via `ruby -wc`
+* XML - lint via `xmllint`
 
 
 For more information:
 ---------------------
 Please take the time to read the documentation:
 
-* Online - https://github.com/Kronuz/SublimeLinter/blob/master/README.md
+* Online - https://github.com/SublimeLinter/SublimeLinter
 * Sublime Text - Select Preferences->Package Settings->SublimeLinter->README
 
 
