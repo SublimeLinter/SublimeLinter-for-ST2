@@ -148,7 +148,7 @@ For example, let's say we are editing a Java project and want to use the "java" 
         {
             "SublimeLinter":
             {
-                "java":
+                "Java":
                 {
                     "working_directory": "/Users/aparajita/Projects/foo",
 
