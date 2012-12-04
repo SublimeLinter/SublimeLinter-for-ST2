@@ -121,7 +121,7 @@ class Linter(BaseLinter):
 
         for line in errors.splitlines():
             match = re.match(
-                r'(?:stdin,1,error,)?Error: Parse error on line (?P<line>\d+): (?P<error>.+)',
+                r'(?:stdin,\d+,error,)?Error: Parse error on line (?P<line>\d+): (?P<error>.+)',
                 line
             )
             if match == None:
