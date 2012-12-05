@@ -17,9 +17,9 @@ CONFIG = {
 class Linter(BaseLinter):
     def parse_errors(self, view, errors, lines, errorUnderlines, violationUnderlines, warningUnderlines, errorMessages, violationMessages, warningMessages):
         for line in errors.splitlines():
-            match = re.match(r'err: (?P<error>.+?(Syntax error at \'(?P<near>.+?)\'; expected \'.+\')) at /.+?:(?P<line>\d+)?', line)
+            match = re.match(r'[Ee]rr(or)?: (?P<error>.+?(Syntax error at \'(?P<near>.+?)\'; expected \'.+\')) at /.+?:(?P<line>\d+)?', line)
             if not match:
-                match = re.match(r'err: (?P<error>.+?(Could not match (?P<near>.+?))?) at /.+?:(?P<line>\d+)?', line)
+                match = re.match(r'[Ee]rr(or)?: (?P<error>.+?(Could not match (?P<near>.+?))?) at /.+?:(?P<line>\d+)?', line)
 
             if match:
                 error, line = match.group('error'), match.group('line')

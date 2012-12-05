@@ -216,7 +216,7 @@ to your theme (adapting the color to your liking):
         <key>name</key>
         <string>SublimeLinter Annotations</string>
         <key>scope</key>
-        <string>sublimelinter.notes</string>
+        <string>sublimelinter.annotations</string>
         <key>settings</key>
         <dict>
             <key>background</key>

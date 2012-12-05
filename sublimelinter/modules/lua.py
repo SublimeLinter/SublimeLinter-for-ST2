@@ -7,7 +7,7 @@ from base_linter import BaseLinter
 CONFIG = {
     'language': 'Lua',
     'executable': 'luac',
-    'lint_args': '-'
+    'lint_args': ['-p', '-'],
 }
 
 

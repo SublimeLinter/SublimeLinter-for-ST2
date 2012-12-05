@@ -203,7 +203,8 @@ class BaseLinter(object):
                                        stdout=subprocess.PIPE,
                                        stderr=subprocess.STDOUT,
                                        startupinfo=self.get_startupinfo())
-            result = process.communicate(code)[0]
+            process.stdin.write(code)
+            result = process.communicate()[0]
         finally:
             if tempfilePath:
                 os.remove(tempfilePath)
