@@ -146,11 +146,13 @@ def run_once(linter, view, **kwargs):
     end = time.time()
     TIMES[vid] = (end - start) * 1000  # Keep how long it took to lint
 
+    broadcast_data(view, linter)
+
     if kwargs.get('event', None) == 'on_post_save' and view.settings().get('sublimelinter_popup_errors_on_save'):
         popup_error_list(view)
 
 
-def popup_error_list(view):
+def build_error_list(view):
     vid = view.id()
     errors = ERRORS[vid].copy()
 
@@ -167,6 +169,18 @@ def popup_error_list(view):
     for line in sorted(errors.keys()):
         for index, message in enumerate(errors[line]):
             error_list.append({'line': line, 'message': message})
+
+    return error_list
+
+
+def broadcast_data(view, linter):
+    error_list = build_error_list(view)
+    channel = "lint_%s" % linter.language.lower()
+    sublime.run_command("package_meta_broadcast", {"channel": channel, "data": error_list})
+
+
+def popup_error_list(view):
+    error_list = build_error_list(view)
 
     panel_items = []
 
