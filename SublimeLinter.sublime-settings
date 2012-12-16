@@ -186,8 +186,8 @@
             standards: list of standards to check against
      */
     "phpcs_options":
-    [
-    ],
+    {
+    },
 
     /*
         If you use SublimeLinter for pyflakes checks, you can ignore some of the "undefined name xxx"
