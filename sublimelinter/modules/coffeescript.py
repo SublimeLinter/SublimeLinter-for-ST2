@@ -1,10 +1,6 @@
-# -*- coding: utf-8 -*-
-# coffeescript.py - sublimelint package for checking coffee files
-# inspired by https://github.com/clutchski/coffeelint
-
 import re
 import os
-from subprocess import Popen, PIPE, call
+import subprocess
 
 try:
     import simplejson
@@ -13,107 +9,79 @@ except ImportError:
 
 from base_linter import BaseLinter, TEMPFILES_DIR
 
-    #if an exception wasn't raised by the call, then coffeelint is ok
-#    CONFIG = {
-#        'executable': 'coffeelint.cmd' if os.name == 'nt' else 'coffeelint',
-#        'lint_args': ['--stdin', '--nocolor', '--csv'],
-#    }
-#except:
-    #fallback on the regualar coffee command
-#    CONFIG = {
-#        'executable': 'coffee.cmd' if os.name == 'nt' else 'coffee',
-#        'lint_args': ['-s', '-l'],
-#    }
-
 CONFIG = {'language': 'CoffeeScript'}
 
 
-def write_config_file(config):
-    """
-    coffeelint requires a config file to be able to pass configuration
-    variables to the program. this function writes a configuration file to
-    hold them and returns the location of the file
-    """
-    temp_file_name = os.path.join(TEMPFILES_DIR, 'coffeelint.json')
-    temp_file = open(temp_file_name, 'w')
-    temp_file.write(
-        simplejson.dumps(config, separators=(',', ':'))
-    )
-    temp_file.close()
-    return temp_file_name
-
-
 class Linter(BaseLinter):
-    def __init__(self, config):
-        super(Linter, self).__init__(config)
+    coffeelint_config = {}
 
-        self.coffeelint_config = {}
-        self.coffeelint_config_file = ''
+    def _test_executable(self, executable):
+        try:
+            args = [executable]
+            args.extend(self.test_existence_args)
+            subprocess.Popen(
+                args,
+                startupinfo=self.get_startupinfo(),
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT
+            ).communicate()
+            return True
+        except OSError:
+            return False
 
+    def get_executable(self, view):
         if os.name == 'nt':
-            self.coffeelint_command, self.coffee_command = (
+            lint_command, coffee_command = (
                 'coffeelint.cmd',
                 'coffee.cmd',
             )
         else:
-            self.coffeelint_command, self.coffee_command = (
+            lint_command, coffee_command = (
                 'coffeelint',
                 'coffee',
             )
 
-        try:
-            call(self.coffee_command)
-            # will cause error if coffee is not installed
-            self.coffee_enabled = True
-        except:
-            self.coffee_enabled = False
+        executable = None
 
-        try:
-            call(self.coffeelint_command)
-            # will cause error if coffeelint is not installed
-            self.coffeelint_enabled = True
-        except:
-            self.coffeelint_enabled = False
+        if self._test_executable(lint_command):
+            executable = lint_command
+            self.mode = 'coffeelint'
+        elif self._test_executable(coffee_command):
+            self.mode = 'coffee'
+            executable = coffee_command
 
-    def get_executable(self, view):
+        enabled = executable != None
+
         return (
-            self.coffee_enabled,
-            None,
-            'built in' if self.coffee_enabled else 'the coffee command could not be used'
+            enabled,
+            executable,
+            'using "%s" for executable' % executable if enabled else 'neither coffeelint nor coffee are avaliable'
         )
 
-    def built_in_check(self, view, code, filename):
-        """
-        this is overridden to allow both `coffee` and `coffeelint` to be used.
-        as linters the return value is a tuple: [0] is the output from coffee
-        and [1] is the output from coffeelint.
-        """
-        #check for config changes
-        config = view.settings().get('coffeelint_options', {})
-
-        if config != self.coffeelint_config:
-            self.coffeelint_config = config
-            self.coffeelint_config_file = write_config_file(self.coffeelint_config)
-
-        if self.coffeelint_enabled:
-            options = [
-                self.coffeelint_command,
+    def get_lint_args(self, view, code, filename):
+        print "GETTING THE ARGS FOR CoffeeScript"
+        print "bt-dubs, the tab size is:" + str(view.settings().get('tab_size', 8))
+        if self.mode == 'coffeelint':
+            args = [
                 '--stdin',
                 '--nocolor',
                 '--csv',
             ]
 
-            if self.coffeelint_config != {}:
-                options += ['--file', self.coffeelint_config_file]
+            new_config = view.settings().get('coffeelint_options', {})
 
-            process = Popen(options, stdin=PIPE, stdout=PIPE, stderr=PIPE)
-            errors, stderrdata = process.communicate(code)  # send data to coffeelint binary
+            if new_config != {}:
+                # smart config setup here
+
+                if new_config != self.coffeelint_config:
+                    self.coffeelint_config = new_config
+                    self.write_config_file()
+
+                args += ['--file', self.coffeelint_config_file]
+
+            return args
         else:
-            # command to input coffee script via stdin and output errors via stdout
-            process = Popen([self.coffee_command, '-s', '-l'], stdin=PIPE, stdout=PIPE, stderr=PIPE)
-            stdoutdata, errors = process.communicate(code)  # send data to coffee binary
-
-        return errors
+            return ('-s', '-l')
 
     def parse_errors(self, view, errors, lines, errorUnderlines,
                      violationUnderlines, warningUnderlines, errorMessages,
@@ -146,5 +114,25 @@ class Linter(BaseLinter):
                 except IndexError:
                     error_type = None
 
-                grp = errorMessages if error_type == 'error' else warningMessages
-                self.add_message(line_num, lines, error_text, grp)
+                self.add_message(
+                    line_num,
+                    lines,
+                    error_text,
+                    errorMessages if error_type == 'error' else warningMessages
+                )
+
+    def write_config_file(self):
+        """
+        coffeelint requires a config file to be able to pass configuration
+        variables to the program. this function writes a configuration file to
+        hold them and sets the location of the file
+        """
+        self.coffeelint_config_file = os.path.join(TEMPFILES_DIR, 'coffeelint.json')
+        temp_file = open(self.coffeelint_config_file, 'w')
+        temp_file.write(
+            simplejson.dumps(
+                self.coffeelint_config,
+                separators=(',', ':')
+            )
+        )
+        temp_file.close()
