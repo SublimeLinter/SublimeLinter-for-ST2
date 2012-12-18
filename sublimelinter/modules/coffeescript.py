@@ -55,7 +55,7 @@ class Linter(BaseLinter):
         return (
             enabled,
             executable,
-            'using "%s" for executable' % executable if enabled else 'neither coffeelint nor coffee are avaliable'
+            'using "%s" for executable' % executable if enabled else 'neither coffeelint nor coffee are available'
         )
 
     def get_lint_args(self, view, code, filename):
