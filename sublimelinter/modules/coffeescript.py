@@ -59,8 +59,6 @@ class Linter(BaseLinter):
         )
 
     def get_lint_args(self, view, code, filename):
-        print "GETTING THE ARGS FOR CoffeeScript"
-        print "bt-dubs, the tab size is:" + str(view.settings().get('tab_size', 8))
         if self.mode == 'coffeelint':
             args = [
                 '--stdin',
@@ -71,7 +69,16 @@ class Linter(BaseLinter):
             new_config = view.settings().get('coffeelint_options', {})
 
             if new_config != {}:
-                # smart config setup here
+                # config based on tab/space and indentation settings set in
+                # ST2 if these values aren't already set
+                new_config['no_tabs']['level'] = new_config['no_tabs'].get(
+                    'level',
+                    'error' if view.settings().get('translate_tabs_to_spaces', False) else 'ignore'
+                )
+                new_config['indentation']['value'] = new_config['indentation'].get(
+                    'value',
+                    view.settings().get('tab_size', 8) if view.settings().get('translate_tabs_to_spaces', False) else 1
+                )
 
                 if new_config != self.coffeelint_config:
                     self.coffeelint_config = new_config
