@@ -213,9 +213,31 @@
         will still be reported.
 
         see: http://www.coffeelint.org/#options
+
+        CoffeeLint must be installed for these to be used, otherwise Sublime
+        Linter will revert to only checking for errors using the coffee
+        compiler
+
+        NOTE: if coffeelint_options['indentation']['value'] is not specified,
+        Sublime Linter will automatically use the number of spaces set for the
+        current file (or 1 if tabs are being used). This can be very useful
+        while switching between differently formatted projects.
+
+        Similarly, if coffeelint_options['no_tabs']['level'] is not set, weather or not
+        "Indent Using Spaces" (at the bottom-right corner of the window) is
+        checked will determine if tabs will be considered an error. If it's
+        checked, then tabs are an error, if it isn't, then we assume you like
+        tabs.
+
+        By default, neither of these are set.
+
     */
     "coffeelint_options": {
         "no_tabs": {
+            //"level": "error"
+        },
+        "indentation": {
+            //"value": 2,
             "level": "error"
         },
         "no_trailing_whitespace": {
@@ -226,10 +248,6 @@
             "level": "error"
         },
         "camel_case_classes": {
-            "level": "error"
-        },
-        "indentation": {
-            "value": 2,
             "level": "error"
         },
         "no_implicit_braces": {
