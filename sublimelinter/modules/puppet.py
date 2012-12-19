@@ -16,10 +16,15 @@ CONFIG = {
 
 class Linter(BaseLinter):
     def parse_errors(self, view, errors, lines, errorUnderlines, violationUnderlines, warningUnderlines, errorMessages, violationMessages, warningMessages):
+        warnings = view.settings().get('puppet_warnings', True)
+        warning = False
         for line in errors.splitlines():
             match = re.match(r'[Ee]rr(or)?: (?P<error>.+?(Syntax error at \'(?P<near>.+?)\'; expected \'.+\')) at /.+?:(?P<line>\d+)?', line)
             if not match:
                 match = re.match(r'[Ee]rr(or)?: (?P<error>.+?(Could not match (?P<near>.+?))?) at /.+?:(?P<line>\d+)?', line)
+                if not match and warnings:
+                    match = re.match(r'[Ww]arn(ing)?: (?P<error>.+?) on line (?P<line>\d+)?(?P<near>)?', line)
+                    warning = True
 
             if match:
                 error, line = match.group('error'), match.group('line')
@@ -30,4 +35,7 @@ class Linter(BaseLinter):
                     error = '{0}, near "{1}"'.format(error, near)
                     self.underline_regex(view, lineno, '(?P<underline>{0})'.format(re.escape(near)), lines, errorUnderlines)
 
-                self.add_message(lineno, lines, error, errorMessages)
+                if warnings and warning:
+                    self.add_message(lineno, lines, error, warningMessages)
+                else:
+                    self.add_message(lineno, lines, error, errorMessages)
