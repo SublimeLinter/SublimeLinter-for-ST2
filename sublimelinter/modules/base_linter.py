@@ -90,8 +90,8 @@ class BaseLinter(object):
 
     LIB_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__.encode('utf-8')), u'libs'))
 
-    JAVASCRIPT_ENGINES = ['node', 'jsc']
-    JAVASCRIPT_ENGINE_NAMES = {'node': 'node.js', 'jsc': 'JavaScriptCore'}
+    JAVASCRIPT_ENGINES = ['node', 'jsc', 'wsh']
+    JAVASCRIPT_ENGINE_NAMES = {'node': 'node.js', 'jsc': 'JavaScriptCore', 'wsh': 'WindowsScriptHost'}
     JAVASCRIPT_ENGINE_WRAPPERS_PATH = os.path.join(LIB_PATH, 'jsengines')
 
     def __init__(self, config):
@@ -368,6 +368,8 @@ class BaseLinter(object):
 
         if (engine['name'] == 'jsc'):
             args = [engine['wrapper'], '--', path + os.path.sep, str(code.count('\n')), options]
+        elif (engine['name'] == 'wsh'):
+            args = ['-nologo', engine['wrapper'], path + os.path.sep, options]
         else:
             args = [engine['wrapper'], path + os.path.sep, options]
 
@@ -386,6 +388,19 @@ class BaseLinter(object):
                     try:
                         path = self.get_mapped_executable(view, 'node')
                         subprocess.call([path, u'-v'], startupinfo=self.get_startupinfo())
+                        self.js_engine = {
+                            'name': engine,
+                            'path': path,
+                            'wrapper': os.path.join(self.JAVASCRIPT_ENGINE_WRAPPERS_PATH, engine + '.js'),
+                        }
+                        break
+                    except OSError:
+                        pass
+
+                elif engine == 'wsh':
+                    try:
+                        path = self.get_mapped_executable(view, 'cscript')
+                        subprocess.call(path, startupinfo=self.get_startupinfo())
                         self.js_engine = {
                             'name': engine,
                             'path': path,
