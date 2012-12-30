@@ -174,6 +174,10 @@ class BaseLinter(object):
         tempfilePath = None
 
         if self.input_method == INPUT_METHOD_STDIN:
+            # Return directly if code is empty, otherwise it will cause error in WSH
+            if not code:
+                return u''
+
             args.extend(self._get_lint_args(view, code, filename))
 
         elif self.input_method == INPUT_METHOD_TEMP_FILE:
