@@ -351,6 +351,15 @@ class BaseLinter(object):
             else:
                 dirname = parent
 
+    def find_file_in_home(self, filename):
+        '''Find a file in the user’s home directory, which can be useful if a
+           file is not found using find_file() above.'''
+        path = os.path.join(os.path.expanduser('~'), filename)
+        if os.path.isfile(path):
+            with open(path, 'r') as f:
+                return f.read()
+        return None
+
     def strip_json_comments(self, json_str):
         stripped_json = JSON_MULTILINE_COMMENT_RE.sub('', json_str)
         stripped_json = JSON_SINGLELINE_COMMENT_RE.sub('', stripped_json)
