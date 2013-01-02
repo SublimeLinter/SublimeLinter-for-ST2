@@ -1,4 +1,4 @@
-/*jshint evil: true, wsh: true, undef: true, unused: true, bitwise: false */
+/*jshint evil: true, wsh: true, undef: true, unused: true */
 
 // usage:
 //   cscript -nologo /path/to/wsh.js /path/to/linter/ ["{option1:true,option2:false}"]
