@@ -27,20 +27,17 @@ var require = function(file) {
 };
 
 // Polyfill for JSON.
-// Define a empty 'define' and 'define.c' to make the json3 work.
-var define = function() {};
+// Define an empty 'define' and 'define.c' to make the json3 work.
+var define = function () {};
 define.c = {};
 require('../jsengines/json3.min');
 
-// Polyfill for Array.prototype.forEach, copy from JSLINT
+// Polyfill for Array.prototype.forEach
 if (typeof Array.prototype.forEach !== 'function') {
-    Array.prototype.forEach = function (f) {
-        var i, length = this.length;
-        for (i = 0; i < length; i += 1) {
-            try {
-                f(this[i]);
-            } catch (ignore) {
-            }
+    Array.prototype.forEach = function (fn, scope) {
+        var i, len = this.length;
+        for (i = 0; i < len; i++) {
+            fn.call(scope || this, this[i], i, this);
         }
     };
 }
@@ -48,8 +45,7 @@ if (typeof Array.prototype.forEach !== 'function') {
 require('linter');
 
 var process = function () {
-    var config, code = '',
-        results = [];
+    var config, code, results;
 
     try {
         config = JSON.parse(WScript.Arguments(1).replace(/\\/g, '"'));
