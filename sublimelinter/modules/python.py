@@ -93,7 +93,7 @@ class PythonError(PythonLintError):
 
 
 class Linter(BaseLinter):
-    def pyflakes_check(self, code, filename, ignore=None):
+    def pyflakes_check(self, code, filename, ignore=None, ignore_globals=None):
         try:
             tree = compile(code, filename, "exec", _ast.PyCF_ONLY_AST)
         except (SyntaxError, IndentationError), value:
@@ -126,18 +126,20 @@ class Linter(BaseLinter):
             return [PythonError(filename, 0, e.args[0])]
         else:
             # Okay, it's syntactically valid.  Now check it.
-            if ignore is not None:
+            if ignore_globals is not None:
                 old_magic_globals = pyflakes._MAGIC_GLOBALS
-                pyflakes._MAGIC_GLOBALS += ignore
-
+                pyflakes._MAGIC_GLOBALS += ignore_globals
             w = pyflakes.Checker(tree, filename)
-
-            if ignore is not None:
+            if ignore_globals is not None:
                 pyflakes._MAGIC_GLOBALS = old_magic_globals
+            if ignore:
+                lines = code.splitlines()
+                return [m for m in w.messages
+                        if not lines[m.lineno - 1].endswith(ignore)]
+            else:
+                return w.messages
 
-            return w.messages
-
-    def pep8_check(self, code, filename, ignore=None):
+    def pep8_check(self, code, filename, ignore=None, select=None):
         messages = []
         _lines = code.split('\n')
 
@@ -146,7 +148,7 @@ class Linter(BaseLinter):
                 code = text[:4]
                 msg = text[5:]
 
-                if pep8.ignore_code(code):
+                if pep8.ignore_code(code) or (select and code not in select):
                     return
                 elif code.startswith('E'):
                     messages.append(Pep8Error(filename, line_number, offset, code, msg))
@@ -155,10 +157,11 @@ class Linter(BaseLinter):
 
             pep8.Checker.report_error = report_error
             _ignore = ignore + pep8.DEFAULT_IGNORE.split(',')
+            _select = select or []
 
             class FakeOptions:
                 verbose = 0
-                select = []
+                select = _select
                 ignore = _ignore
 
             pep8.options = FakeOptions()
@@ -181,15 +184,23 @@ class Linter(BaseLinter):
 
     def built_in_check(self, view, code, filename):
         errors = []
+        settings = view.settings()
 
-        if view.settings().get("pep8", True):
-            errors.extend(self.pep8_check(code, filename, ignore=view.settings().get('pep8_ignore', [])))
+        if settings.get("pep8", True):
+            errors.extend(self.pep8_check(code, filename,
+                ignore=settings.get('pep8_ignore', []),
+                select=settings.get('pep8_select', []),
+            ))
 
-        pyflakes_ignore = view.settings().get('pyflakes_ignore', None)
-        pyflakes_disabled = view.settings().get('pyflakes_disabled', False)
+        pyflakes_ignore = settings.get('pyflakes_ignore', "# pyflakes.ignore")
+        pyflakes_ignore_globals = settings.get('pyflakes_ignore_globals', None)
+        pyflakes_disabled = settings.get('pyflakes_disabled', False)
 
         if not pyflakes_disabled:
-            errors.extend(self.pyflakes_check(code, filename, pyflakes_ignore))
+            errors.extend(self.pyflakes_check(code, filename,
+                ignore=pyflakes_ignore,
+                ignore_globals=pyflakes_ignore_globals,
+            ))
 
         return errors
 

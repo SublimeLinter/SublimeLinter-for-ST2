@@ -180,6 +180,13 @@
     ],
 
     /*
+        The inverse of pep8_ignore is pep8_select: ONLY show the given error codes.
+        This option takes precendence over pep8_ignore: if the same error code is listed
+        in both options, it will be shown.
+    */
+    "pep8_select": [],
+
+    /*
         If you use SublimeLinter for pyflakes checks, you can ignore some of the "undefined name xxx"
         errors (comes in handy if you work with post-processors, globals/builtins available only at runtime, etc.).
         You can control what names will be ignored with the user setting "pyflakes_ignore".
@@ -192,7 +199,7 @@
                 "A_GLOBAL_CONSTANT"
             ],
     */
-    "pyflakes_ignore":
+    "pyflakes_ignore_globals":
     [
     ],
 
@@ -202,6 +209,13 @@
         set this option to false.
     */
     "pyflakes_ignore_import_*": true,
+    
+    /*
+        More generically, if you want to silence pyflakes for any given line,
+        simply set this option to a string. If the line ends in that string,
+        pyflakes will be silenced for all errors on that particular line.
+    */
+    "pyflakes_ignore": "# pyflakes.ignore",
 
     /*
         Perl linter: "perl" to use the Perl language syntax check, or "perlcritic" to use Perl::Critic linting.
