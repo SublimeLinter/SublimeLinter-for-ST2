@@ -143,29 +143,31 @@ class Linter(BaseLinter):
 
         if _lines:
             def report_error(self, line_number, offset, text, check):
-                code = text[:4]
+                code = super(pep8.StandardReport, self).error(
+                    line_number,
+                    offset,
+                    text, check
+                )
+
+                if not code:
+                    # code ignored
+                    return
+
                 msg = text[5:]
 
-                if pep8.ignore_code(code):
-                    return
-                elif code.startswith('E'):
-                    messages.append(Pep8Error(filename, line_number, offset, code, msg))
+                if code.startswith('E'):
+                    messages.append(
+                        Pep8Error(filename, line_number, offset, code, msg))
                 else:
-                    messages.append(Pep8Warning(filename, line_number, offset, code, msg))
+                    messages.append(
+                        Pep8Warning(filename, line_number, offset, code, msg))
 
-            pep8.Checker.report_error = report_error
-            _ignore = ignore + pep8.DEFAULT_IGNORE.split(',')
+            pep8.StandardReport.error = report_error
+            ignore = ignore + pep8.DEFAULT_IGNORE.split(',')
+            options = pep8.StyleGuide(
+                reporter=pep8.StandardReport, ignore=ignore).options
+            options.max_line_length = pep8.MAX_LINE_LENGTH
 
-            class FakeOptions:
-                verbose = 0
-                select = []
-                ignore = _ignore
-
-            pep8.options = FakeOptions()
-            pep8.options.physical_checks = pep8.find_checks('physical_line')
-            pep8.options.logical_checks = pep8.find_checks('logical_line')
-            pep8.options.max_line_length = pep8.MAX_LINE_LENGTH
-            pep8.options.counters = dict.fromkeys(pep8.BENCHMARK_KEYS, 0)
             good_lines = [l + '\n' for l in _lines]
             good_lines[-1] = good_lines[-1].rstrip('\n')
 
@@ -173,7 +175,7 @@ class Linter(BaseLinter):
                 good_lines = good_lines[:-1]
 
             try:
-                pep8.Checker(filename, good_lines).check_all()
+                pep8.Checker(filename, good_lines, options).check_all()
             except Exception, e:
                 print "An exception occured when running pep8 checker: %s" % e
 
@@ -183,7 +185,8 @@ class Linter(BaseLinter):
         errors = []
 
         if view.settings().get("pep8", True):
-            errors.extend(self.pep8_check(code, filename, ignore=view.settings().get('pep8_ignore', [])))
+            errors.extend(self.pep8_check(
+                code, filename, ignore=view.settings().get('pep8_ignore', [])))
 
         pyflakes_ignore = view.settings().get('pyflakes_ignore', None)
         pyflakes_disabled = view.settings().get('pyflakes_disabled', False)
