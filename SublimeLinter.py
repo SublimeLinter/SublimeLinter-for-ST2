@@ -20,8 +20,16 @@ VIOLATIONS = {}  # violation messages, they are displayed in the status bar
 WARNINGS = {}    # warning messages, they are displayed in the status bar
 UNDERLINES = {}  # underline regions related to each lint message
 TIMES = {}       # collects how long it took the linting to complete
-MOD_LOAD = Loader(sublime.packages_path(), LINTERS)  # utility to load (and reload
-                 # if necessary) linter modules [useful when working on plugin]
+MOD_LOAD = None  # utility to load (and reload if necessary) linter modules
+                 # [useful when working on plugin]
+
+
+def load_modules():
+    global MOD_LOAD
+    MOD_LOAD = Loader(sublime.packages_path(), LINTERS)
+
+sublime.set_timeout_async(load_modules, 1000)
+
 
 # For snappier linting, different delays are used for different linting times:
 # (linting time, delays)
