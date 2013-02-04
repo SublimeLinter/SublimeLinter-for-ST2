@@ -208,7 +208,7 @@ def add_lint_marks(view, lines, error_underlines, violation_underlines, warning_
 
     for type_name, underlines in list(types.items()):
         if underlines:
-            view.add_regions('lint-underline-' + type_name, underlines, 'sublimelinter.underline.' + type_name, sublime.DRAW_EMPTY_AS_OVERWRITE)
+            view.add_regions('lint-underline-' + type_name, underlines, 'sublimelinter.underline.' + type_name, '', sublime.DRAW_EMPTY_AS_OVERWRITE)
 
     if lines:
         outline_style = view.settings().get('sublimelinter_mark_style', 'outline')
