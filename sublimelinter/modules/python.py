@@ -212,7 +212,7 @@ class Linter(BaseLinter):
             regex = 'def [\w_]+\(.*?(?P<underline>[\w]*{0}[\w]*)'.format(re.escape(word))
             self.underline_regex(view, lineno, regex, lines, underlines, word)
 
-        errors.sort(lambda a, b: cmp(a.lineno, b.lineno))
+        errors.sort(key=lambda x: x.lineno)
         ignoreImportStar = view.settings().get('pyflakes_ignore_import_*', True)
 
         for error in errors:
