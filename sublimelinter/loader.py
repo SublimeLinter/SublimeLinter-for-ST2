@@ -6,29 +6,36 @@ import os
 import os.path
 import sys
 
-import modules.base_linter as base_linter
+from imp import reload
+from .modules import base_linter
 
 # sys.path appears to ignore individual paths with unicode characters.
 # This means that this lib_path will be ignored for Windows 7 users with
 # non-ascii characters in their username (thus as their home directory).
 #
-# libs_path = os.path.abspath(os.path.join(os.path.dirname(__file__.encode('utf-8')), u'modules', u'libs'))
+# libs_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'modules', 'libs'))
 #
 # if libs_path not in sys.path:
-#     sys.path.insert(0, libs_path)
+    # sys.path.insert(0, libs_path)
 
 # As a fix for the Windows 7 lib path issue (#181), the individual modules in
 # the `libs` folder can be explicitly imported. This obviously doesn't scale
 # well, but may be a necessary evil until ST2 upgrades its internal Python.
 #
-tmpdir = os.getcwdu()
-os.chdir(os.path.abspath(os.path.join(os.path.dirname(__file__.encode('utf-8')), u'modules', u'libs')))
+# tmpdir = os.getcwd()
+# os.chdir(os.path.abspath(os.path.join(os.path.dirname(__file__), 'modules', 'libs')))
+tmppath = sys.path.copy()
+libs_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'modules', 'libs'))
 
-for mod in [u'capp_lint', u'pep8', u'pyflakes', u'pyflakes.checker', u'pyflakes.messages']:
-    __import__(mod)
-    print u'imported {0}'.format(mod)
+if libs_path not in sys.path:
+    sys.path.insert(0, libs_path)
 
-os.chdir(tmpdir)
+for mod in ['capp_lint']:
+    m = __import__(mod)
+    print('imported {0}'.format(mod))
+
+# os.chdir(tmpdir)
+sys.path = tmppath
 
 
 class Loader(object):
@@ -36,9 +43,9 @@ class Loader(object):
     def __init__(self, basedir, linters):
         '''assign relevant variables and load all existing linter modules'''
         self.basedir = basedir
-        self.basepath = u'sublimelinter/modules'
+        self.basepath = 'sublimelinter/modules'
         self.linters = linters
-        self.modpath = self.basepath.replace('/', u'.')
+        self.modpath = self.basepath.replace('/', '.')
         self.ignored = ('__init__', 'base_linter')
         self.fix_path()
         self.load_all()
@@ -47,23 +54,22 @@ class Loader(object):
         if os.name != 'posix':
             return
 
-        path = os.environ['PATH'].encode('utf-8')
+        path = os.environ['PATH']
 
         if path:
-            dirs = path.encode('utf-8').split(':')
+            dirs = path.split(':')
 
-            if u'/usr/local/bin' not in dirs:
-                dirs.insert(0, u'/usr/local/bin')
+            if '/usr/local/bin' not in dirs:
+                dirs.insert(0, '/usr/local/bin')
 
-            if u'~/bin' not in dirs and u'$HOME/bin' not in dirs:
-                dirs.append(u'$HOME/bin')
+            if '~/bin' not in dirs and '$HOME/bin' not in dirs:
+                dirs.append('$HOME/bin')
 
-            os.environ['PATH'] = u':'.join(dirs)
-
+            os.environ['PATH'] = ':'.join(dirs)
 
     def load_all(self):
         '''loads all existing linter modules'''
-        for modf in glob.glob(u'{0}/*.py'.format(self.basepath)):
+        for modf in glob.glob('{0}/{1}/*.py'.format(self.basedir, self.basepath)):
             base, name = os.path.split(modf)
             name = name.split('.', 1)[0]
 
@@ -74,11 +80,16 @@ class Loader(object):
 
     def load_module(self, name):
         '''loads a single linter module'''
-        fullmod = u'{0}.{1}'.format(self.modpath, name)
+        fullmod = '{0}.{1}'.format(self.modpath, name)
 
         # make sure the path didn't change on us (this is needed for submodule reload)
-        pushd = os.getcwdu()
-        os.chdir(self.basedir)
+
+        # pushd = os.getcwd()
+        # os.chdir(self.basedir)
+        tmppath = sys.path.copy()
+
+        if self.basedir not in sys.path:
+            sys.path.insert(0, self.basedir)
 
         __import__(fullmod)
 
@@ -93,7 +104,7 @@ class Loader(object):
 
         # update module's __file__ to absolute path so we can reload it
         # if saved with sublime text
-        mod.__file__ = os.path.abspath(mod.__file__.encode('utf-8')).rstrip('co')
+        mod.__file__ = os.path.abspath(mod.__file__).rstrip('co')
 
         language = ''
 
@@ -114,14 +125,15 @@ class Loader(object):
 
                 lc_language = language.lower()
                 self.linters[lc_language] = linter
-                print u'SublimeLinter: {0} loaded'.format(language)
+                print('SublimeLinter: {0} loaded'.format(language))
             else:
-                print u'SublimeLinter: {0} disabled (no language specified in module)'.format(name)
+                print('SublimeLinter: {0} disabled (no language specified in module)'.format(name))
 
         except KeyError:
-            print u'SublimeLinter: general error importing {0} ({1})'.format(name, language or '<unknown>')
+            print('SublimeLinter: general error importing {0} ({1})'.format(name, language or '<unknown>'))
 
-        os.chdir(pushd)
+        # os.chdir(pushd)
+        sys.path = tmppath
 
     def reload_module(self, module):
         '''reload a single linter module

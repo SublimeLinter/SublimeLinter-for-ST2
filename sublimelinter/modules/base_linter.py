@@ -65,7 +65,7 @@ CONFIG = {
     'input_method': INPUT_METHOD_STDIN
 }
 
-TEMPFILES_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__.encode('utf-8')), u'..', u'.tempfiles'))
+TEMPFILES_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '.tempfiles'))
 
 JSON_MULTILINE_COMMENT_RE = re.compile(r'\/\*[\s\S]*?\*\/')
 JSON_SINGLELINE_COMMENT_RE = re.compile(r'\/\/[^\n\r]*')
@@ -88,7 +88,7 @@ class BaseLinter(object):
 
     JSC_PATH = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/A/Resources/jsc'
 
-    LIB_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__.encode('utf-8')), u'libs'))
+    LIB_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), 'libs'))
 
     JAVASCRIPT_ENGINES = ['node', 'jsc']
     JAVASCRIPT_ENGINE_NAMES = {'node': 'node.js', 'jsc': 'JavaScriptCore'}
@@ -101,14 +101,14 @@ class BaseLinter(object):
         self.test_existence_args = config.get('test_existence_args', ['-v'])
         self.js_engine = None
 
-        if isinstance(self.test_existence_args, basestring):
+        if isinstance(self.test_existence_args, str):
             self.test_existence_args = (self.test_existence_args,)
 
         self.input_method = config.get('input_method', INPUT_METHOD_STDIN)
         self.filename = None
         self.lint_args = config.get('lint_args', [])
 
-        if isinstance(self.lint_args, basestring):
+        if isinstance(self.lint_args, str):
             self.lint_args = [self.lint_args]
 
     def check_enabled(self, view):
@@ -120,7 +120,7 @@ class BaseLinter(object):
                     message = 'using "{0}"'.format(self.executable) if self.executable else 'built in'
             except Exception as ex:
                 self.enabled = False
-                message = unicode(ex)
+                message = str(ex)
         else:
             self.enabled, message = self._check_enabled(view)
 
@@ -129,7 +129,7 @@ class BaseLinter(object):
     def _check_enabled(self, view):
         if self.executable is None:
             return (True, 'built in')
-        elif isinstance(self.executable, basestring):
+        elif isinstance(self.executable, str):
             self.executable = self.get_mapped_executable(view, self.executable)
         elif isinstance(self.executable, bool) and self.executable == False:
             return (False, 'unknown error')
@@ -159,7 +159,7 @@ class BaseLinter(object):
                 args = settings.get('lint_args', [])
                 lintArgs.extend(args)
 
-                cwd = settings.get('working_directory').encode('utf-8')
+                cwd = settings.get('working_directory')
 
                 if cwd and os.path.isabs(cwd) and os.path.isdir(cwd):
                     os.chdir(cwd)
@@ -180,7 +180,7 @@ class BaseLinter(object):
             if filename:
                 filename = os.path.basename(filename)
             else:
-                filename = u'view{0}'.format(view.id())
+                filename = 'view{0}'.format(view.id())
 
             tempfilePath = os.path.join(TEMPFILES_DIR, filename)
 
@@ -188,14 +188,14 @@ class BaseLinter(object):
                 f.write(code)
 
             args.extend(self._get_lint_args(view, code, tempfilePath))
-            code = u''
+            code = ''
 
         elif self.input_method == INPUT_METHOD_FILE:
             args.extend(self._get_lint_args(view, code, filename))
-            code = u''
+            code = ''
 
         else:
-            return u''
+            return ''
 
         try:
             process = subprocess.Popen(args,
@@ -203,13 +203,13 @@ class BaseLinter(object):
                                        stdout=subprocess.PIPE,
                                        stderr=subprocess.STDOUT,
                                        startupinfo=self.get_startupinfo())
-            process.stdin.write(code)
+            process.stdin.write(code.encode('utf-8'))
             result = process.communicate()[0]
         finally:
             if tempfilePath:
                 os.remove(tempfilePath)
 
-        return result.strip()
+        return result.decode('utf-8').strip()
 
     def parse_errors(self, view, errors, lines, errorUnderlines, violationUnderlines, warningUnderlines, errorMessages, violationMessages, warningMessages):
         pass
@@ -235,7 +235,7 @@ class BaseLinter(object):
         line = view.full_line(view.text_point(lineno, 0))
         position += line.begin()
 
-        for i in xrange(length):
+        for i in range(length):
             underlines.append(sublime.Region(position + i))
 
     def underline_regex(self, view, lineno, regex, lines, underlines, wordmatch=None, linematch=None):
@@ -300,7 +300,7 @@ class BaseLinter(object):
             lang = self.language.lower()
 
             if lang in map:
-                return map[lang].encode('utf-8')
+                return map[lang]
 
         return default
 
@@ -328,7 +328,7 @@ class BaseLinter(object):
     def find_file(self, filename, view):
         '''Find a file with the given name, starting in the view's directory,
            then ascending the file hierarchy up to root.'''
-        path = view.file_name().encode('utf-8')
+        path = view.file_name()
 
         # quit if the view is temporary
         if not path:
@@ -385,7 +385,7 @@ class BaseLinter(object):
                 if engine == 'node':
                     try:
                         path = self.get_mapped_executable(view, 'node')
-                        subprocess.call([path, u'-v'], startupinfo=self.get_startupinfo())
+                        subprocess.call([path, '-v'], startupinfo=self.get_startupinfo())
                         self.js_engine = {
                             'name': engine,
                             'path': path,
@@ -408,5 +408,5 @@ class BaseLinter(object):
             return (True, self.js_engine['path'], 'using {0}'.format(self.JAVASCRIPT_ENGINE_NAMES[self.js_engine['name']]))
 
         # Didn't find an engine, tell the user
-        engine_list = ', '.join(self.JAVASCRIPT_ENGINE_NAMES.values())
+        engine_list = ', '.join(list(self.JAVASCRIPT_ENGINE_NAMES.values()))
         return (False, '', 'One of the following Javascript engines must be installed: ' + engine_list)

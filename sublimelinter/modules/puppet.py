@@ -3,7 +3,7 @@
 
 import re
 
-from base_linter import BaseLinter, INPUT_METHOD_TEMP_FILE
+from .base_linter import BaseLinter, INPUT_METHOD_TEMP_FILE
 
 CONFIG = {
     'language': 'Puppet',

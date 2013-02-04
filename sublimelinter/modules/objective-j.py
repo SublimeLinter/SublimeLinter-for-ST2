@@ -37,7 +37,7 @@
 #
 
 from capp_lint import LintChecker
-from base_linter import BaseLinter
+from .base_linter import BaseLinter
 
 CONFIG = {
     'language': 'Objective-J'
