@@ -20,8 +20,15 @@ VIOLATIONS = {}  # violation messages, they are displayed in the status bar
 WARNINGS = {}    # warning messages, they are displayed in the status bar
 UNDERLINES = {}  # underline regions related to each lint message
 TIMES = {}       # collects how long it took the linting to complete
-MOD_LOAD = Loader(os.getcwd(), LINTERS)  # utility to load (and reload
-                 # if necessary) linter modules [useful when working on plugin]
+MOD_LOAD = None  # utility to load (and reload if necessary) linter modules
+                 # [useful when working on plugin]
+
+
+def load_modules():
+    global MOD_LOAD
+    MOD_LOAD = Loader(sublime.packages_path(), LINTERS)
+
+sublime.set_timeout_async(load_modules, 1000)
 
 
 # For snappier linting, different delays are used for different linting times:
@@ -209,7 +216,7 @@ def add_lint_marks(view, lines, error_underlines, violation_underlines, warning_
 
     for type_name, underlines in list(types.items()):
         if underlines:
-            view.add_regions('lint-underline-' + type_name, underlines, 'sublimelinter.underline.' + type_name, sublime.DRAW_EMPTY_AS_OVERWRITE)
+            view.add_regions('lint-underline-' + type_name, underlines, 'sublimelinter.underline.' + type_name, '', sublime.DRAW_EMPTY_AS_OVERWRITE)
 
     if lines:
         outline_style = view.settings().get('sublimelinter_mark_style', 'outline')
@@ -577,7 +584,7 @@ def view_in_tab(view, title, text, file_type):
     tab = view.window().new_file()
     tab.set_name(title)
     _id = tab.buffer_id()
-    tab.set_scratch(_id)
+    tab.set_scratch(True)
     tab.settings().set('gutter', True)
     tab.settings().set('line_numbers', False)
     tab.set_syntax_file(file_type)
@@ -645,9 +652,10 @@ class LintCommand(sublime_plugin.TextCommand):
         self.view = view
         self.help_called = False
 
-    def run_(self, action):
+    def run(self, edit, **kwargs):
         '''method called by default via view.run_command;
            used to dispatch to appropriate method'''
+        action = kwargs.get('action')
         if not action:
             return
 
@@ -840,7 +848,7 @@ class SublimelinterWindowCommand(sublime_plugin.WindowCommand):
         else:
             return False
 
-    def run_(self, args):
+    def run(self, **kwargs):
         pass
 
 
@@ -848,7 +856,7 @@ class SublimelinterAnnotationsCommand(SublimelinterWindowCommand):
     '''Commands to extract annotations and display them in
        a file
     '''
-    def run_(self, args):
+    def run(self, **kwargs):
         linter = LINTERS.get('annotations', None)
 
         if linter is None:
@@ -876,21 +884,21 @@ class SublimelinterCommand(SublimelinterWindowCommand):
         linter = select_linter(self.window.active_view(), ignore_disabled=True)
         return linter is not None
 
-    def run_(self, args={}):
+    def run(self, **kwargs):
         view = self.window.active_view()
-        action = args.get('action', '')
+        action = kwargs.get('action')
 
         if view and action:
             if action == 'lint':
-                self.lint_view(view, show_popup_list=args.get('show_popup', False))
+                self.lint_view(view, show_popup_list=kwargs.get('show_popup', False))
             else:
-                view.run_command('lint', action)
+                view.run_command('lint', {'action': action})
 
     def lint_view(self, view, show_popup_list):
         linter = select_linter(view, ignore_disabled=True)
 
         if linter:
-            view.run_command('lint', linter.language)
+            view.run_command('lint', {'linter': linter.language})
             regions = get_lint_regions(view, coalesce=True)
 
             if regions:

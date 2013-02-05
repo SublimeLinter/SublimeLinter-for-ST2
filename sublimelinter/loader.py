@@ -2,6 +2,7 @@
 # Sublime Text is restarted.
 
 import glob
+import imp
 import os
 import os.path
 import sys
@@ -36,7 +37,7 @@ class Loader(object):
     def __init__(self, basedir, linters):
         '''assign relevant variables and load all existing linter modules'''
         self.basedir = basedir
-        self.basepath = 'sublimelinter/modules'
+        self.basepath = 'SublimeLinter/sublimelinter/modules'
         self.linters = linters
         self.modpath = self.basepath.replace('/', '.')
         self.ignored = ('__init__', 'base_linter')
@@ -63,7 +64,7 @@ class Loader(object):
 
     def load_all(self):
         '''loads all existing linter modules'''
-        for modf in glob.glob('{0}/*.py'.format(self.basepath)):
+        for modf in glob.glob('{0}/*.py'.format(os.path.join(self.basedir, self.basepath))):
             base, name = os.path.split(modf)
             name = name.split('.', 1)[0]
 
@@ -89,7 +90,7 @@ class Loader(object):
         #    so module development is easier
         # (to make sublime text reload language submodule,
         #  just save sublimelinter_plugin.py )
-        mod = sys.modules[fullmod] = reload(sys.modules[fullmod])
+        mod = sys.modules[fullmod] = imp.reload(sys.modules[fullmod])
 
         # update module's __file__ to absolute path so we can reload it
         # if saved with sublime text
