@@ -652,9 +652,10 @@ class LintCommand(sublime_plugin.TextCommand):
         self.view = view
         self.help_called = False
 
-    def run_(self, action):
+    def run(self, edit, **kwargs):
         '''method called by default via view.run_command;
            used to dispatch to appropriate method'''
+        action = kwargs.get('action')
         if not action:
             return
 
@@ -847,7 +848,7 @@ class SublimelinterWindowCommand(sublime_plugin.WindowCommand):
         else:
             return False
 
-    def run_(self, args):
+    def run(self, **kwargs):
         pass
 
 
@@ -855,7 +856,7 @@ class SublimelinterAnnotationsCommand(SublimelinterWindowCommand):
     '''Commands to extract annotations and display them in
        a file
     '''
-    def run_(self, args):
+    def run(self, **kwargs):
         linter = LINTERS.get('annotations', None)
 
         if linter is None:
@@ -883,21 +884,21 @@ class SublimelinterCommand(SublimelinterWindowCommand):
         linter = select_linter(self.window.active_view(), ignore_disabled=True)
         return linter is not None
 
-    def run_(self, args={}):
+    def run(self, **kwargs):
         view = self.window.active_view()
-        action = args.get('action', '')
+        action = kwargs.get('action')
 
         if view and action:
             if action == 'lint':
-                self.lint_view(view, show_popup_list=args.get('show_popup', False))
+                self.lint_view(view, show_popup_list=kwargs.get('show_popup', False))
             else:
-                view.run_command('lint', action)
+                view.run_command('lint', {'action': action})
 
     def lint_view(self, view, show_popup_list):
         linter = select_linter(view, ignore_disabled=True)
 
         if linter:
-            view.run_command('lint', linter.language)
+            view.run_command('lint', {'linter': linter.language})
             regions = get_lint_regions(view, coalesce=True)
 
             if regions:
