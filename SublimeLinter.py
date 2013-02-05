@@ -584,7 +584,7 @@ def view_in_tab(view, title, text, file_type):
     tab = view.window().new_file()
     tab.set_name(title)
     _id = tab.buffer_id()
-    tab.set_scratch(_id)
+    tab.set_scratch(True)
     tab.settings().set('gutter', True)
     tab.settings().set('line_numbers', False)
     tab.set_syntax_file(file_type)
