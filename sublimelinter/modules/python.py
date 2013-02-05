@@ -242,7 +242,7 @@ class Linter(BaseLinter):
                                     pyflakes.messages.UndefinedName,
                                     pyflakes.messages.UndefinedExport,
                                     pyflakes.messages.UndefinedLocal,
-                                    pyflakes.messages.RedefinedFunction,
+                                    pyflakes.messages.Redefined,
                                     pyflakes.messages.UnusedVariable)):
                 underline_word(error.lineno, error.message, underlines)
 
