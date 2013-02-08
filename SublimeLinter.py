@@ -608,7 +608,7 @@ def reload_view_module(view):
     for name, linter in LINTERS.items():
         module = sys.modules[linter.__module__]
 
-        if module.__file__.encode('utf-8') == view.file_name().encode('utf-8'):
+        if module.__file__ == view.file_name().encode(sys.getfilesystemencoding()):
             print 'SublimeLinter: reloading language:', linter.language
             MOD_LOAD.reload_module(module)
             lint_views(linter)
