@@ -498,8 +498,8 @@ def _delay_queue(timeout, preemptive):
     global __signaled_, __queued_
     now = time.time()
 
-    if not preemptive and now <= __queued_ + 0.01:
-        return  # never delay queues too fast (except preemptively)
+    #if not preemptive and now <= __queued_ + 0.01:
+    #    return  # never delay queues too fast (except preemptively)
 
     __queued_ = now
     _timeout = float(timeout) / 1000
