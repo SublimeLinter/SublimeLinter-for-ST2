@@ -3,14 +3,14 @@
 
 import re
 
-from base_linter import BaseLinter, INPUT_METHOD_TEMP_FILE
+from base_linter import BaseLinter, INPUT_METHOD_FILE
 
 CONFIG = {
     'language': 'c_cpplint',
     'executable': 'cpplint.py',
     'test_existence_args': ['--help'],
     'lint_args': '{filename}',
-    'input_method': INPUT_METHOD_TEMP_FILE
+    'input_method': INPUT_METHOD_FILE
 }
 
 
