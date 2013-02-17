@@ -204,6 +204,78 @@
     "pyflakes_ignore_import_*": true,
 
     /*
+        By default, CoffeeLint will help ensure you are writing idiomatic
+        CoffeeScript, but every rule is optional and configurable so it can be
+        tuned to fit your preferred coding style. To override any of CoffeeLint's
+        default options, start with this example configuration file and tweak as
+        needed. To enable an option, set its level to error and to disable an
+        option, set its level to ignore. If you set the level to warn, violations
+        will still be reported.
+
+        see: http://www.coffeelint.org/#options
+
+        CoffeeLint must be installed for these to be used, otherwise Sublime
+        Linter will revert to only checking for errors using the coffee
+        compiler
+
+        NOTE: if coffeelint_options['indentation']['value'] is not specified,
+        Sublime Linter will automatically use the number of spaces set for the
+        current file (or 1 if tabs are being used). This can be very useful
+        while switching between differently formatted projects.
+
+        Similarly, if coffeelint_options['no_tabs']['level'] is not set, weather or not
+        "Indent Using Spaces" (at the bottom-right corner of the window) is
+        checked will determine if tabs will be considered an error. If it's
+        checked, then tabs are an error, if it isn't, then we assume you like
+        tabs.
+
+        By default, neither of these are set.
+
+    */
+    "coffeelint_options": {
+        "no_tabs": {
+            //"level": "error"
+        },
+        "indentation": {
+            //"value": 2,
+            "level": "error"
+        },
+        "no_trailing_whitespace": {
+            "level": "error"
+        },
+        "max_line_length": {
+            "value": 80,
+            "level": "error"
+        },
+        "camel_case_classes": {
+            "level": "error"
+        },
+        "no_implicit_braces": {
+            "level": "ignore"
+        },
+        "no_trailing_semicolons": {
+            "level": "error"
+        },
+        "no_plusplus": {
+            "level": "ignore"
+        },
+        "no_throwing_strings": {
+            "level": "error"
+        },
+        "cyclomatic_complexity": {
+            "value": 11,
+            "level": "ignore"
+        },
+        "line_endings": {
+            "value": "unix",
+            "level": "ignore"
+        },
+        "no_implicit_parens": {
+            "level": "ignore"
+        }
+    },
+
+    /*
         Perl linter: "perl" to use the Perl language syntax check, or "perlcritic" to use Perl::Critic linting.
         Perl is now set to use "perlcritic" by default due to a vulnerability with blindly running `perl -c`
         on files with `BEGIN` or `CHECK` blocks.
