@@ -738,6 +738,10 @@ class BackgroundLinter(sublime_plugin.EventListener):
         queue_linter(select_linter(view), view, event='on_load')
 
     def on_post_save(self, view):
+        # a new file was saved? reload settings
+        if view.settings().get('sublimelinter') == None:
+            reload_settings(view)
+
         if view.is_scratch() or view.settings().get('sublimelinter') == False:
             return
 
