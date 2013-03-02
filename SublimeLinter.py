@@ -709,6 +709,18 @@ class BackgroundLinter(sublime_plugin.EventListener):
         super(BackgroundLinter, self).__init__()
         self.lastSelectedLineNo = -1
 
+    def on_activated(self, view):
+        # File_name() check is done to not trigger linter when buffers are
+        # created on start of Sublime and do not have anything loaded yet.
+        if view.is_loading() or not view.file_name() or view.is_scratch():
+            return
+
+        if view.settings().get('run') == False or view.settings().get('run') == 'save-only':
+            return
+
+        reload_settings(view)
+        queue_linter(select_linter(view), view, event='on_activated')
+
     def on_modified(self, view):
         if view.is_scratch():
             return
@@ -730,9 +742,14 @@ class BackgroundLinter(sublime_plugin.EventListener):
         queue_linter(linter, view)
 
     def on_load(self, view):
+        # When loading a file, only lint the currently active one.
+        # Otherwise starting SublimeText with many files open would be slow.
+        if view != sublime.active_window().active_view() or view.is_scratch():
+            return
+
         reload_settings(view)
 
-        if view.is_scratch() or view.settings().get('sublimelinter') == False or view.settings().get('sublimelinter') == 'save-only':
+        if view.settings().get('sublimelinter') == False or view.settings().get('sublimelinter') == 'save-only':
             return
 
         queue_linter(select_linter(view), view, event='on_load')
