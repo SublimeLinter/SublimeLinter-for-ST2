@@ -13,14 +13,17 @@ from .modules import base_linter as base_linter
 # This means that this lib_path will be ignored for Windows 7 users with
 # non-ascii characters in their username (thus as their home directory).
 
-libs_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'modules', 'libs'))
+for extra_path in ['modules/libs']:
+    libs_path = os.path.abspath(os.path.join(os.path.dirname(__file__), extra_path))
+    if libs_path not in sys.path:
+        sys.path.insert(0, libs_path)
 
 for mod in [u'capp_lint', u'pep8', u'pyflakes', u'pyflakes.api', u'pyflakes.checker', u'pyflakes.messages', u'pyflakes.reporter']:
-    __import__(mod)
-    print u'imported {0}'.format(mod)
-
-if libs_path not in sys.path:
-    sys.path.insert(0, libs_path)
+    try:
+        __import__(mod)
+        print('imported {0}'.format(mod))
+    except ImportError as e:
+        print('Could not import {0}: {1}'.format(mod, e))
 
 
 class Loader(object):
