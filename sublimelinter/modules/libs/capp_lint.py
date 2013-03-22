@@ -31,7 +31,10 @@ from __future__ import with_statement
 from optparse import OptionParser
 from string import Template
 import cgi
-import cStringIO
+try:
+    import cStringIO
+except ImportError:
+    from io import StringIO
 import os
 import os.path
 import re
@@ -126,7 +129,7 @@ class LintChecker(object):
     [{'positions': [2], 'filename': '<stdin>', 'lineNum': 2, 'message': 'missing space between control statement and parentheses', 'type': 2, 'line': u'if( 1 ) {'}, {'positions': [8], 'filename': '<stdin>', 'lineNum': 2, 'message': 'braces should be on their own line', 'type': 1, 'line': u'if( 1 ) {'}, {'positions': [3, 5], 'filename': '<stdin>', 'lineNum': 2, 'message': 'space inside parentheses', 'type': 1, 'line': u'if( 1 ) {'}, {'positions': [7], 'filename': '<stdin>', 'lineNum': 3, 'message': 'assignment operator without surrounding spaces', 'type': 2, 'line': u'  var b=7;'}, {'lineNum': 4, 'message': 'accidental global variable', 'type': 1, 'line': u'      c = 8;', 'filename': '<stdin>'}]
     """
 
-    VAR_BLOCK_START_RE = re.compile(ur'''(?x)
+    VAR_BLOCK_START_RE = re.compile(r'''(?x)
         (?P<indent>\s*)         # indent before a var keyword
         (?P<var>var\s+)         # var keyword and whitespace after
         (?P<identifier>[a-zA-Z_$]\w*)\s*
@@ -138,19 +141,19 @@ class LintChecker(object):
         )
     ''')
 
-    SEPARATOR_RE = re.compile(ur'''(?x)
+    SEPARATOR_RE = re.compile(r'''(?x)
         (?P<expression>.*)              # Everything up to the line separator
         (?P<separator>[,;+\-/*%^&|=\\]) # The line separator
         \s*                             # Optional whitespace after
         $                               # End of expression
     ''')
 
-    INDENTED_EXPRESSION_RE_TEMPLATE = ur'''(?x)
+    INDENTED_EXPRESSION_RE_TEMPLATE = r'''(?x)
         [ ]{%d}                 # Placeholder for indent of first identifier that started block
         (?P<expression>.+)      # Expression
     '''
 
-    VAR_BLOCK_RE_TEMPLATE = ur'''(?x)
+    VAR_BLOCK_RE_TEMPLATE = r'''(?x)
         [ ]{%d}                 # Placeholder for indent of first identifier that started block
         (?P<indent>\s*)         # Capture any further indent
         (?:
@@ -168,39 +171,39 @@ class LintChecker(object):
         )
     '''
 
-    STATEMENT_RE = re.compile(ur'''(?x)
+    STATEMENT_RE = re.compile(r'''(?x)
         \s*((continue|do|for|function|if|else|return|switch|while|with)\b|\[+\s*[a-zA-Z_$]\w*\s+[a-zA-Z_$]\w*\s*[:\]])
     ''')
 
-    TRAILING_WHITESPACE_RE = re.compile(ur'^.*(\s+)$')
-    STRIP_LINE_COMMENT_RE = re.compile(ur'(.*)\s*(?://.*|/\*.*\*/\s*)$')
-    LINE_COMMENT_RE = re.compile(ur'\s*(?:/\*.*\*/\s*|//.*)$')
-    COMMENT_RE = re.compile(ur'/\*.*?\*/')
-    BLOCK_COMMENT_START_RE = re.compile(ur'\s*/\*.*(?!\*/\s*)$')
-    BLOCK_COMMENT_END_RE = re.compile(ur'.*?\*/')
-    METHOD_RE = ur'[-+]\s*\([a-zA-Z_$]\w*\)\s*[a-zA-Z_$]\w*'
-    FUNCTION_RE = re.compile(ur'\s*function\s*(?P<name>[a-zA-Z_$]\w*)?\(.*\)\s*\{?')
-    RE_RE = re.compile(ur'(?<!\\)/.*?[^\\]/[gims]*')
+    TRAILING_WHITESPACE_RE = re.compile(r'^.*(\s+)$')
+    STRIP_LINE_COMMENT_RE = re.compile(r'(.*)\s*(?://.*|/\*.*\*/\s*)$')
+    LINE_COMMENT_RE = re.compile(r'\s*(?:/\*.*\*/\s*|//.*)$')
+    COMMENT_RE = re.compile(r'/\*.*?\*/')
+    BLOCK_COMMENT_START_RE = re.compile(r'\s*/\*.*(?!\*/\s*)$')
+    BLOCK_COMMENT_END_RE = re.compile(r'.*?\*/')
+    METHOD_RE = r'[-+]\s*\([a-zA-Z_$]\w*\)\s*[a-zA-Z_$]\w*'
+    FUNCTION_RE = re.compile(r'\s*function\s*(?P<name>[a-zA-Z_$]\w*)?\(.*\)\s*\{?')
+    RE_RE = re.compile(r'(?<!\\)/.*?[^\\]/[gims]*')
     EMPTY_STRING_LITERAL_FUNCTION = lambda match: match.group(1) + (len(match.group(2)) * ' ') + match.group(1)
     EMPTY_SELF_STRING_LITERAL_FUNCTION = lambda self, match: match.group(1) + (len(match.group(2)) * ' ') + match.group(1)
 
     def noncapturing(regex):
-        return ur'(?:%s)' % regex
+        return r'(?:%s)' % regex
 
     def optional(regex):
-        return ur'(?:%s)?' % regex
+        return r'(?:%s)?' % regex
 
-    DECIMAL_DIGIT_RE = ur'[0-9]'
-    NON_ZERO_DIGIT_RE = ur'[1-9]'
-    DECIMAL_DIGITS_RE = DECIMAL_DIGIT_RE + ur'+'
-    DECIMAL_DIGITS_OPT_RE = optional(DECIMAL_DIGIT_RE + ur'+')
-    EXPONENT_INDICATOR_RE = ur'[eE]'
-    SIGNED_INTEGER_RE = noncapturing(DECIMAL_DIGITS_RE) + ur'|' + noncapturing(ur'\+' + DECIMAL_DIGITS_RE) + ur'|' + noncapturing('-' + DECIMAL_DIGITS_RE)
-    DECIMAL_INTEGER_LITERAL_RE = ur'0|' + noncapturing(NON_ZERO_DIGIT_RE + DECIMAL_DIGIT_RE + ur'*')
+    DECIMAL_DIGIT_RE = r'[0-9]'
+    NON_ZERO_DIGIT_RE = r'[1-9]'
+    DECIMAL_DIGITS_RE = DECIMAL_DIGIT_RE + r'+'
+    DECIMAL_DIGITS_OPT_RE = optional(DECIMAL_DIGIT_RE + r'+')
+    EXPONENT_INDICATOR_RE = r'[eE]'
+    SIGNED_INTEGER_RE = noncapturing(DECIMAL_DIGITS_RE) + r'|' + noncapturing(r'\+' + DECIMAL_DIGITS_RE) + r'|' + noncapturing('-' + DECIMAL_DIGITS_RE)
+    DECIMAL_INTEGER_LITERAL_RE = r'0|' + noncapturing(NON_ZERO_DIGIT_RE + DECIMAL_DIGIT_RE + r'*')
     EXPONENT_PART_RE = EXPONENT_INDICATOR_RE + noncapturing(SIGNED_INTEGER_RE)
     EXPONENT_PART_OPT_RE = optional(EXPONENT_PART_RE)
 
-    DECIMAL_LITERAL_RE = re.compile(noncapturing(noncapturing(DECIMAL_INTEGER_LITERAL_RE) + ur'\.' + DECIMAL_DIGITS_OPT_RE + EXPONENT_PART_OPT_RE) + ur'|\.' + noncapturing(DECIMAL_DIGITS_RE + EXPONENT_PART_OPT_RE) + ur'|' + noncapturing(noncapturing(DECIMAL_INTEGER_LITERAL_RE) + EXPONENT_PART_OPT_RE))
+    DECIMAL_LITERAL_RE = re.compile(noncapturing(noncapturing(DECIMAL_INTEGER_LITERAL_RE) + r'\.' + DECIMAL_DIGITS_OPT_RE + EXPONENT_PART_OPT_RE) + r'|\.' + noncapturing(DECIMAL_DIGITS_RE + EXPONENT_PART_OPT_RE) + r'|' + noncapturing(noncapturing(DECIMAL_INTEGER_LITERAL_RE) + EXPONENT_PART_OPT_RE))
 
     ERROR_TYPE_ILLEGAL = 1
     ERROR_TYPE_WARNING = 2
@@ -225,12 +228,12 @@ class LintChecker(object):
     LINE_CHECKLIST = (
         {
             'id': 'tabs',
-            'regex': re.compile(ur'[\t]'),
+            'regex': re.compile(r'[\t]'),
             'error': 'line contains tabs',
             'type': ERROR_TYPE_ILLEGAL
         },
         {
-            'regex': re.compile(ur'([^\t -~])'),
+            'regex': re.compile(r'([^\t -~])'),
             'error': 'line contains non-ASCII characters',
             'showPositionForGroup': 1,
             'type': ERROR_TYPE_ILLEGAL,
@@ -238,25 +241,25 @@ class LintChecker(object):
             'optionDefault': False
         },
         {
-            'regex': re.compile(ur'^\s*(?:(?:else )?if|for|switch|while|with)(\()'),
+            'regex': re.compile(r'^\s*(?:(?:else )?if|for|switch|while|with)(\()'),
             'error': 'missing space between control statement and parentheses',
             'showPositionForGroup': 1,
             'type': ERROR_TYPE_WARNING
         },
         {
-            'regex': re.compile(ur'^\s*(?:(?:else )?if|for|switch|while|with)\s*\(.+\)\s*(\{)\s*(?://.*|/\*.*\*/\s*)?$'),
+            'regex': re.compile(r'^\s*(?:(?:else )?if|for|switch|while|with)\s*\(.+\)\s*(\{)\s*(?://.*|/\*.*\*/\s*)?$'),
             'error': 'braces should be on their own line',
             'showPositionForGroup': 1,
             'type': ERROR_TYPE_ILLEGAL
         },
         {
-            'regex': re.compile(ur'^\s*(?:(?:else )?if|for|switch|while|with)\s*\((\s+)?.+?(\s+)?\)\s*(?:(?:\{|//.*|/\*.*\*/)\s*)?$'),
+            'regex': re.compile(r'^\s*(?:(?:else )?if|for|switch|while|with)\s*\((\s+)?.+?(\s+)?\)\s*(?:(?:\{|//.*|/\*.*\*/)\s*)?$'),
             'error': 'space inside parentheses',
             'showPositionForGroup': [1, 2],
             'type': ERROR_TYPE_ILLEGAL
         },
         {
-            'regex': re.compile(ur'^\s*(?:(?:else )?if|for|switch|while|with)\s*\(.+\)\s*(?:[\w_]|\[).+(;)\s*(?://.*|/\*.*\*/\s*)?$'),
+            'regex': re.compile(r'^\s*(?:(?:else )?if|for|switch|while|with)\s*\(.+\)\s*(?:[\w_]|\[).+(;)\s*(?://.*|/\*.*\*/\s*)?$'),
             'error': 'dependent statements must be on their own line',
             'showPositionForGroup': 1,
             'type': ERROR_TYPE_ILLEGAL
@@ -269,50 +272,50 @@ class LintChecker(object):
         },
         {
             # Filter out @import statements, method declarations, method parameters, unary plus/minus/increment/decrement
-            'filter': {'regex': re.compile(ur'(^@import\b|^\s*' + METHOD_RE + '|^\s*[a-zA-Z_$]\w*:\s*\([a-zA-Z_$][\w<>]*\)\s*\w+|[a-zA-Z_$]\w*(\+\+|--)|([ -+*/%^&|<>!]=?|&&|\|\||<<|>>>|={1,3}|!==?)\s*[-+][\w(\[])'), 'pass': False},
+            'filter': {'regex': re.compile(r'(^@import\b|^\s*' + METHOD_RE + '|^\s*[a-zA-Z_$]\w*:\s*\([a-zA-Z_$][\w<>]*\)\s*\w+|[a-zA-Z_$]\w*(\+\+|--)|([ -+*/%^&|<>!]=?|&&|\|\||<<|>>>|={1,3}|!==?)\s*[-+][\w(\[])'), 'pass': False},
 
             # Also convert literals like 1.5e+7 to 42 so that the - or + in there is ignored for purposes of this warning.
             'preprocess': STD_IGNORES + EXPONENTIAL_TO_SIMPLE,
-            'regex': re.compile(ur'(?<=[\w)\]"\']|([ ]))([-+*/%^]|&&?|\|\|?|<<|>>>?)(?=[\w({\["\']|(?(1)\b\b|[ ]))'),
+            'regex': re.compile(r'(?<=[\w)\]"\']|([ ]))([-+*/%^]|&&?|\|\|?|<<|>>>?)(?=[\w({\["\']|(?(1)\b\b|[ ]))'),
             'error': 'binary operator without surrounding spaces',
             'showPositionForGroup': 2,
             'type': ERROR_TYPE_WARNING
         },
         {
             # Filter out possible = within @accessors
-            'filter': {'regex': re.compile(ur'^\s*(?:@outlet\s+)?[a-zA-Z_$]\w*\s+[a-zA-Z_$]\w*\s+@accessors\b'), 'pass': False},
+            'filter': {'regex': re.compile(r'^\s*(?:@outlet\s+)?[a-zA-Z_$]\w*\s+[a-zA-Z_$]\w*\s+@accessors\b'), 'pass': False},
 
             'preprocess': STD_IGNORES,
-            'regex': re.compile(ur'(?<=[\w)\]"\']|([ ]))(=|[-+*/%^&|]=|<<=|>>>?=)(?=[\w({\["\']|(?(1)\b\b|[ ]))'),
+            'regex': re.compile(r'(?<=[\w)\]"\']|([ ]))(=|[-+*/%^&|]=|<<=|>>>?=)(?=[\w({\["\']|(?(1)\b\b|[ ]))'),
             'error': 'assignment operator without surrounding spaces',
             'showPositionForGroup': 2,
             'type': ERROR_TYPE_WARNING
         },
         {
             # Filter out @import statements and @implementation/method declarations
-            'filter': {'regex': re.compile(ur'^(@import\b|@implementation\b|\s*' + METHOD_RE + ')'), 'pass': False},
+            'filter': {'regex': re.compile(r'^(@import\b|@implementation\b|\s*' + METHOD_RE + ')'), 'pass': False},
 
             'preprocess': STD_IGNORES,
-            'regex': re.compile(ur'(?<=[\w)\]"\']|([ ]))(===?|!==?|[<>]=?)(?=[\w({\["\']|(?(1)\b\b|[ ]))'),
+            'regex': re.compile(r'(?<=[\w)\]"\']|([ ]))(===?|!==?|[<>]=?)(?=[\w({\["\']|(?(1)\b\b|[ ]))'),
             'error': 'comparison operator without surrounding spaces',
             'showPositionForGroup': 2,
             'type': ERROR_TYPE_WARNING
         },
         {
-            'regex': re.compile(ur'^(\s+)' + METHOD_RE + '|^\s*[-+](\()[a-zA-Z_$][\w]*\)\s*[a-zA-Z_$]\w*|^\s*[-+]\s*\([a-zA-Z_$][\w]*\)(\s+)[a-zA-Z_$]\w*'),
+            'regex': re.compile(r'^(\s+)' + METHOD_RE + '|^\s*[-+](\()[a-zA-Z_$][\w]*\)\s*[a-zA-Z_$]\w*|^\s*[-+]\s*\([a-zA-Z_$][\w]*\)(\s+)[a-zA-Z_$]\w*'),
             'error': 'extra or missing space in a method declaration',
             'showPositionForGroup': 0,
             'type': ERROR_TYPE_WARNING
         },
         {
             # Check for brace following a class or method declaration
-            'regex': re.compile(ur'^(?:\s*[-+]\s*\([a-zA-Z_$]\w*\)|@implementation)\s*[a-zA-Z_$][\w]*.*?\s*(\{)\s*(?:$|//.*$)'),
+            'regex': re.compile(r'^(?:\s*[-+]\s*\([a-zA-Z_$]\w*\)|@implementation)\s*[a-zA-Z_$][\w]*.*?\s*(\{)\s*(?:$|//.*$)'),
             'error': 'braces should be on their own line',
             'showPositionForGroup': 0,
             'type': ERROR_TYPE_ILLEGAL
         },
         {
-            'regex': re.compile(ur'^\s*var\s+[a-zA-Z_$]\w*\s*=\s*function\s+([a-zA-Z_$]\w*)\s*\('),
+            'regex': re.compile(r'^\s*var\s+[a-zA-Z_$]\w*\s*=\s*function\s+([a-zA-Z_$]\w*)\s*\('),
             'error': 'function name is ignored',
             'showPositionForGroup': 1,
             'skip': True,
@@ -328,8 +331,8 @@ class LintChecker(object):
     DIRS_TO_SKIP = ('.git', 'Frameworks', 'Build', 'Resources', 'CommonJS', 'Objective-J')
 
     ERROR_FORMATS = ('text', 'html')
-    TEXT_ERROR_SINGLE_FILE_TEMPLATE = Template(u'$lineNum: $message.\n+$line\n')
-    TEXT_ERROR_MULTI_FILE_TEMPLATE = Template(u'$filename:$lineNum: $message.\n+$line\n')
+    TEXT_ERROR_SINGLE_FILE_TEMPLATE = Template(r'$lineNum: $message.\n+$line\n')
+    TEXT_ERROR_MULTI_FILE_TEMPLATE = Template(r'$filename:$lineNum: $message.\n+$line\n')
 
     def __init__(self, view=None, basedir='', var_declarations=VAR_DECLARATIONS_SINGLE, verbose=False):
         self.view = view
@@ -442,7 +445,7 @@ class LintChecker(object):
                     self.error('line contains invalid unicode character(s)', type=self.ERROR_TYPE_ILLEGAL)
 
                 if self.verbose:
-                    print u'%d: %s' % (self.lineNum, tabs2spaces(self.line))
+                    print('{0}: {1}'.format(self.lineNum, tabs2spaces(self.line)))
 
                 if check_line:
                     self.run_line_checks()
@@ -518,7 +521,7 @@ class LintChecker(object):
         # If there is an open comment block, eat it
         if commentOpenCount:
             if self.verbose:
-                print u'%d: BLOCK COMMENT START' % self.lineNum
+                print('{0}: BLOCK COMMENT START'.format(self.lineNum))
         else:
             return
 
@@ -528,13 +531,13 @@ class LintChecker(object):
             match = self.BLOCK_COMMENT_END_RE.match(self.line)
 
         if self.verbose:
-            print u'%d: BLOCK COMMENT END' % self.lineNum
+            print('{}: BLOCK COMMENT END'.format(self.lineNum))
 
     def balance_pairs(self, squareOpenCount, curlyOpenCount, parenOpenCount):
         # The following lines have to be indented at least as much as the first identifier
         # after the var keyword at the start of the block.
         if self.verbose:
-            print "%d: BALANCE BRACKETS: '['=%d, '{'=%d, '('=%d" % (self.lineNum, squareOpenCount, curlyOpenCount, parenOpenCount)
+            print("{0}: BALANCE BRACKETS: '['={1}, '{'={2}, '('={3}".format(self.lineNum, squareOpenCount, curlyOpenCount, parenOpenCount))
 
         lineRE = re.compile(self.INDENTED_EXPRESSION_RE_TEMPLATE % len(self.identifierIndent))
 
@@ -579,7 +582,7 @@ class LintChecker(object):
 
             if squareOpenCount == 0 and curlyOpenCount == 0 and parenOpenCount == 0:
                 if self.verbose:
-                    print u'%d: BRACKETS BALANCED' % self.lineNum
+                    print('{}: BRACKETS BALANCED'.format(self.lineNum)) 
 
                 # The brackets are closed, this line must be separated
                 match = self.SEPARATOR_RE.match(self.expression)
@@ -746,7 +749,7 @@ class LintChecker(object):
 
             # Now we have the start of a variable block
             if self.verbose:
-                print u'%d: VAR BLOCK' % self.lineNum
+                print('%d: VAR BLOCK'.format(self.lineNum))
 
             varLineNum = self.lineNum
             varLine = self.line
@@ -754,12 +757,12 @@ class LintChecker(object):
             haveLine, isSingleVar = self.var_block(match)
 
             if self.verbose:
-                print u'%d: END VAR BLOCK:' % self.lineNum,
+                print('{}: END VAR BLOCK:'.format(self.lineNum))
 
                 if isSingleVar:
-                    print u'SINGLE'
+                    print('SINGLE')
                 else:
-                    print u'MULTIPLE'
+                    print('MULTIPLE')
 
             if lastStatementWasVar and self.varDeclarations != self.VAR_DECLARATIONS_NONE:
                 if (self.varDeclarations == self.VAR_DECLARATIONS_SINGLE and lastVarWasSingle and isSingleVar) or \
@@ -775,7 +778,7 @@ class LintChecker(object):
             self.lineNum = 0
 
             if self.verbose:
-                print u'%s: %s' % (check['title'], self.sourcefile.name)
+                print('{}: {}'.format(check['title'], self.sourcefile.name))
 
             check['action']()
 
@@ -818,7 +821,7 @@ class LintChecker(object):
 
             except StopIteration:
                 if self.verbose:
-                    print u'EOF\n'
+                    print('EOF\n')
                 pass
 
     def lint_text(self, text, filename="<stdin>"):
@@ -830,7 +833,7 @@ class LintChecker(object):
             self.run_file_checks()
         except StopIteration:
             if self.verbose:
-                print u'EOF\n'
+                print('EOF\n')
             pass
 
         return self.errors
@@ -1119,7 +1122,7 @@ if __name__ == '__main__':
         filenames = [name.rstrip() for name in sys.stdin.readlines()]
 
     if not filenames:
-        print usage.replace('%prog', os.path.basename(sys.argv[0]))
+        print(usage.replace('%prog', os.path.basename(sys.argv[0])))
         sys.exit(0)
 
     checker = LintChecker(basedir=basedir, view=None, var_declarations=LintChecker.VAR_DECLARATIONS.index(options.var_declarations), verbose=options.verbose)
