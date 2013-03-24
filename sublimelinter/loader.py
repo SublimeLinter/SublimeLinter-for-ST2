@@ -21,7 +21,7 @@ for extra_path in ['modules/libs']:
 for mod in [u'capp_lint', u'pep8', u'pyflakes', u'pyflakes.api', u'pyflakes.checker', u'pyflakes.messages', u'pyflakes.reporter']:
     try:
         __import__(mod)
-        print('imported {0}'.format(mod))
+        # print('imported {0}'.format(mod))
     except ImportError as e:
         print('Could not import {0}: {1}'.format(mod, e))
 

@@ -385,7 +385,7 @@ def highlight_notes(view):
     regions = LINTERS['annotations'].built_in_check(view, text, '')
 
     if regions:
-        view.add_regions('lint-annotations', regions, 'sublimelinter.annotations', sublime.DRAW_EMPTY_AS_OVERWRITE)
+        view.add_regions('lint-annotations', regions, 'sublimelinter.annotations', flags=sublime.DRAW_EMPTY_AS_OVERWRITE)
 
 
 def _update_view(view, filename, **kwargs):
@@ -627,9 +627,10 @@ def settings_changed():
 
 def reload_settings(view):
     '''Restores user settings.'''
-    settings = sublime.load_settings(__name__ + '.sublime-settings')
-    settings.clear_on_change(__name__)
-    settings.add_on_change(__name__, settings_changed)
+    settings_name = 'SublimeLinter'
+    settings = sublime.load_settings(settings_name + '.sublime-settings')
+    settings.clear_on_change(settings_name)
+    settings.add_on_change(settings_name, settings_changed)
 
     for setting in ALL_SETTINGS:
         if settings.get(setting) != None:
