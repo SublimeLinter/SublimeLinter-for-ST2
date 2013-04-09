@@ -7,7 +7,7 @@ import os.path
 import sys
 
 from imp import reload
-from .modules import base_linter as base_linter
+from .modules import base_linter
 
 # sys.path appears to ignore individual paths with unicode characters.
 # This means that this lib_path will be ignored for Windows 7 users with
@@ -15,12 +15,14 @@ from .modules import base_linter as base_linter
 
 libs_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'modules', 'libs'))
 
-for mod in [u'capp_lint', u'pep8', u'pyflakes', u'pyflakes.api', u'pyflakes.checker', u'pyflakes.messages', u'pyflakes.reporter']:
-    __import__(mod)
-    print u'imported {0}'.format(mod)
-
 if libs_path not in sys.path:
     sys.path.insert(0, libs_path)
+
+for mod in ['capp_lint', 'pep8', 'pyflakes', 'pyflakes.api', 'pyflakes.checker', 'pyflakes.messages', 'pyflakes.reporter']:
+    __import__(mod)
+    print('imported {0}'.format(mod))
+
+
 
 
 class Loader(object):
@@ -32,7 +34,7 @@ class Loader(object):
         self.linters = linters
         self.modpath = 'SublimeLinter.sublimelinter.modules'
         # Temporarily disable objective-j & python
-        self.ignored = ('__init__', 'base_linter', 'objective-j', 'python')
+        self.ignored = ('__init__', 'base_linter', 'objective-j')
         self.fix_path()
         self.load_all()
 
@@ -62,7 +64,6 @@ class Loader(object):
 
             if name in self.ignored:
                 continue
-
             self.load_module(name)
 
     def load_module(self, name):
