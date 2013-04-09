@@ -187,7 +187,7 @@ class Linter(BaseLinter):
             try:
                 pep8.Checker(filename, good_lines, options).check_all()
             except Exception as e:
-                print("An exception occured when running pep8 checker: %s" % e)
+                print(("An exception occured when running pep8 checker: %s" % e))
 
         return messages
 
@@ -274,4 +274,4 @@ class Linter(BaseLinter):
                 pass
 
             else:
-                print('Oops, we missed an error type!', type(error))
+                print(('Oops, we missed an error type!', type(error)))
