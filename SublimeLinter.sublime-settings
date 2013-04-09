@@ -47,7 +47,7 @@
     {
         "Python Django": "python",
         "Ruby on Rails": "ruby",
-        "C++": "c"
+        "C++": "c",
     },
 
     // An array of linter names to disable. Names should be lowercase.

@@ -3,7 +3,7 @@
 
 import json
 
-from base_linter import BaseLinter
+from .base_linter import BaseLinter
 
 CONFIG = {
     'language': 'CSS'

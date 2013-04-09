@@ -4,7 +4,7 @@ pylint is not available as a checker that runs in the background
 as it generally takes much too long.
 '''
 
-from StringIO import StringIO
+from io import StringIO
 import tempfile
 
 try:
@@ -14,7 +14,7 @@ try:
 except ImportError:
     PYLINT_AVAILABLE = False
 
-from base_linter import BaseLinter
+from .base_linter import BaseLinter
 
 CONFIG = {
     'language': 'pylint'
@@ -77,7 +77,7 @@ class Linter(BaseLinter):
             try:
                 lineno = info[1]
             except IndexError:
-                print info
+                print(info)
 
             message = ":".join(info[2:])
             self.add_message(int(lineno), lines, message, errorMessages)
