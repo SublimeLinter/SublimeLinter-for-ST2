@@ -15,12 +15,12 @@ from .modules import base_linter as base_linter
 
 libs_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'modules', 'libs'))
 
+if libs_path not in sys.path:
+    sys.path.insert(0, libs_path)
+
 for mod in ['capp_lint', 'pep8', 'pyflakes', 'pyflakes.api', 'pyflakes.checker', 'pyflakes.messages', 'pyflakes.reporter']:
     __import__(mod)
     print('imported {0}'.format(mod))
-
-if libs_path not in sys.path:
-    sys.path.insert(0, libs_path)
 
 
 class Loader(object):
