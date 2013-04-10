@@ -13,7 +13,10 @@ from .modules import base_linter as base_linter
 # This means that this lib_path will be ignored for Windows 7 users with
 # non-ascii characters in their username (thus as their home directory).
 
-libs_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'modules', 'libs'))
+for extra_path in ['modules/libs']:
+    libs_path = os.path.abspath(os.path.join(os.path.dirname(__file__), extra_path))
+    if libs_path not in sys.path:
+        sys.path.insert(0, libs_path)
 
 if libs_path not in sys.path:
     sys.path.insert(0, libs_path)
@@ -31,8 +34,8 @@ class Loader(object):
         self.basepath = 'sublimelinter/modules'
         self.linters = linters
         self.modpath = 'SublimeLinter.sublimelinter.modules'
-        # Temporarily disable objective-j & python
-        self.ignored = ('__init__', 'base_linter', 'objective-j', 'python')
+        # Temporarily disable objective-j
+        self.ignored = ('__init__', 'base_linter', 'objective-j')
         self.fix_path()
         self.load_all()
 
