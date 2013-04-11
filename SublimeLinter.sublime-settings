@@ -45,7 +45,7 @@
     */
     "sublimelinter_syntax_map":
     {
-        "Python Django": "python",
+        "Python Django": "pylint",
         "Ruby on Rails": "ruby",
         "C++": "c"
     },
