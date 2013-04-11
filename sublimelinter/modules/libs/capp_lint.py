@@ -328,13 +328,8 @@ class LintChecker(object):
     DIRS_TO_SKIP = ('.git', 'Frameworks', 'Build', 'Resources', 'CommonJS', 'Objective-J')
 
     ERROR_FORMATS = ('text', 'html')
-<<<<<<< HEAD
-    TEXT_ERROR_SINGLE_FILE_TEMPLATE = Template('$lineNum: $message.\n+$line\n')
-    TEXT_ERROR_MULTI_FILE_TEMPLATE = Template('$filename:$lineNum: $message.\n+$line\n')
-=======
     TEXT_ERROR_SINGLE_FILE_TEMPLATE = Template(r'$lineNum: $message.\n+$line\n')
     TEXT_ERROR_MULTI_FILE_TEMPLATE = Template(r'$filename:$lineNum: $message.\n+$line\n')
->>>>>>> cadc8e0bbd03c444103b7d34fc9a3a2ad555680e
 
     def __init__(self, view=None, basedir='', var_declarations=VAR_DECLARATIONS_SINGLE, verbose=False):
         self.view = view
@@ -447,11 +442,7 @@ class LintChecker(object):
                     self.error('line contains invalid unicode character(s)', type=self.ERROR_TYPE_ILLEGAL)
 
                 if self.verbose:
-<<<<<<< HEAD
-                    print('{}: {}'.format(self.lineNum, tabs2spaces(self.line)))
-=======
                     print('{0}: {1}'.format(self.lineNum, tabs2spaces(self.line)))
->>>>>>> cadc8e0bbd03c444103b7d34fc9a3a2ad555680e
 
                 if check_line:
                     self.run_line_checks()
@@ -527,11 +518,7 @@ class LintChecker(object):
         # If there is an open comment block, eat it
         if commentOpenCount:
             if self.verbose:
-<<<<<<< HEAD
-                print('{}: BLOCK COMMENT START'.format(self.lineNum))
-=======
                 print('{0}: BLOCK COMMENT START'.format(self.lineNum))
->>>>>>> cadc8e0bbd03c444103b7d34fc9a3a2ad555680e
         else:
             return
 
@@ -547,11 +534,7 @@ class LintChecker(object):
         # The following lines have to be indented at least as much as the first identifier
         # after the var keyword at the start of the block.
         if self.verbose:
-<<<<<<< HEAD
-            print("{}: BALANCE BRACKETS: '['={}, '{'={}, '('={}".format(self.lineNum, squareOpenCount, curlyOpenCount, parenOpenCount))
-=======
             print("{0}: BALANCE BRACKETS: '['={1}, '{'={2}, '('={3}".format(self.lineNum, squareOpenCount, curlyOpenCount, parenOpenCount))
->>>>>>> cadc8e0bbd03c444103b7d34fc9a3a2ad555680e
 
         lineRE = re.compile(self.INDENTED_EXPRESSION_RE_TEMPLATE % len(self.identifierIndent))
 
@@ -596,11 +579,7 @@ class LintChecker(object):
 
             if squareOpenCount == 0 and curlyOpenCount == 0 and parenOpenCount == 0:
                 if self.verbose:
-<<<<<<< HEAD
                     print('{}: BRACKETS BALANCED'.format(self.lineNum))
-=======
-                    print('{}: BRACKETS BALANCED'.format(self.lineNum))
->>>>>>> cadc8e0bbd03c444103b7d34fc9a3a2ad555680e
 
                 # The brackets are closed, this line must be separated
                 match = self.SEPARATOR_RE.match(self.expression)
@@ -767,11 +746,7 @@ class LintChecker(object):
 
             # Now we have the start of a variable block
             if self.verbose:
-<<<<<<< HEAD
                 print('{}: VAR BLOCK'.format(self.lineNum))
-=======
-                print('%d: VAR BLOCK'.format(self.lineNum))
->>>>>>> cadc8e0bbd03c444103b7d34fc9a3a2ad555680e
 
             varLineNum = self.lineNum
             varLine = self.line
