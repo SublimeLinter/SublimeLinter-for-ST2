@@ -18,7 +18,7 @@ SublimeLinter has built in linters for the following languages:
 * JavaScript - lint via built in [jshint](http://jshint.org), [jslint](http://jslint.com), or the [closure linter (gjslint)](https://developers.google.com/closure/utilities/docs/linter_howto) (if installed)
 * Lua - syntax check via `luac`
 * Objective-J - lint via built-in [capp_lint](https://github.com/aparajita/capp_lint)
-* Perl - lint via [Perl:Critic](http://perlcritic.com/) or syntax+deprecation check via `perl -c`
+* Perl - lint via [Perl::Critic](http://perlcritic.com/) or syntax+deprecation check via `perl -c`
 * PHP - syntax check via `php -l`
 * Puppet - syntax check via `puppet parser validate`
 * Python - native, moderately-complete lint
