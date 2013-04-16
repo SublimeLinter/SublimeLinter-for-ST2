@@ -157,7 +157,8 @@ class BaseLinter(object):
 
             if settings:
                 args = settings.get('lint_args', [])
-                lintArgs.extend(args)
+                if len(args) != 0:
+                    lintArgs = args
 
                 cwd = settings.get('working_directory').encode('utf-8')
 

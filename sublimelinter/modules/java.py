@@ -11,7 +11,8 @@ CONFIG = {
     'language': 'Java',
     'executable': 'javac',
     'test_existence_args': '-version',
-    'input_method': INPUT_METHOD_FILE
+    'input_method': INPUT_METHOD_FILE,
+    'lint_args': ["-Xlint", "{filename}"]
 }
 
 ERROR_RE = re.compile(r'^(?P<path>.*\.java):(?P<line>\d+): (?P<warning>warning: )?(?:\[\w+\] )?(?P<error>.*)')
