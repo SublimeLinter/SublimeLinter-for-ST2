@@ -142,7 +142,8 @@ class BaseLinter(object):
             args = [self.executable]
             args.extend(self.test_existence_args)
             subprocess.Popen(args, startupinfo=self.get_startupinfo(),
-                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT).communicate()
+                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                             shell=os.name == 'nt').communicate()
         except OSError:
             return (False, '"{0}" cannot be found'.format(self.executable))
 
@@ -202,6 +203,7 @@ class BaseLinter(object):
                                        stdin=subprocess.PIPE,
                                        stdout=subprocess.PIPE,
                                        stderr=subprocess.STDOUT,
+                                       shell=os.name == 'nt',
                                        startupinfo=self.get_startupinfo())
             process.stdin.write(code)
             result = process.communicate()[0]
