@@ -156,10 +156,10 @@ class BaseLinter(object):
             settings = view.settings().get('SublimeLinter', {}).get(self.language, {})
 
             if settings:
-                args = settings.get('lint_args', [])
-                lintArgs.extend(args)
+                if 'lint_args' in settings:
+                    lintArgs = settings['lint_args']
 
-                cwd = settings.get('working_directory').encode('utf-8')
+                cwd = settings.get('working_directory', '').encode('utf-8')
 
                 if cwd and os.path.isabs(cwd) and os.path.isdir(cwd):
                     os.chdir(cwd)
