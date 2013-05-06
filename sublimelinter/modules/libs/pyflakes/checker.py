@@ -195,7 +195,7 @@ class Checker(object):
 
     nodeDepth = 0
     traceTree = False
-    builtIns = set(dir(builtins)) | set(_MAGIC_GLOBALS)
+    builtIns = set(dir(builtins))
 
     def __init__(self, tree, filename='(none)', builtins=None):
         self._deferredFunctions = []
@@ -203,8 +203,8 @@ class Checker(object):
         self.deadScopes = []
         self.messages = []
         self.filename = filename
-        if builtins:
-            self.builtIns = self.builtIns.union(builtins)
+        self.builtIns = = self.builtIns.union(builtins, set(_MAGIC_GLOBALS)) if builtins \
+            else self.builtIns.union(set(_MAGIC_GLOBALS))
         self.scopeStack = [ModuleScope()]
         self.futuresAllowed = True
         self.root = tree
