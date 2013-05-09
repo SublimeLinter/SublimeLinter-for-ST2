@@ -35,10 +35,12 @@ DELAYS = (
     (1600, (1600, 3000)),
 )
 
+# Select one of the predefined gutter markers, the options are:
+# "alpha", "bright", "dark", "hard" and "simple" REFACTOR, Make this an setting
 MARKS = {
-    'violation': ('', 'dot'),
-    'warning': ('', 'dot'),
-    'illegal': ('', 'circle'),
+    'violation': ('', '../SublimeLinter/gutter_markers/bright-violation'),
+    'warning': ('', '../SublimeLinter/gutter_markers/bright-warning'),
+    'illegal': ('', '../SublimeLinter/gutter_markers/bright-illegal')
 }
 
 # All available settings for SublimeLinter;
@@ -62,6 +64,7 @@ ALL_SETTINGS = [
     'sublimelinter_executable_map',
     'sublimelinter_fill_outlines',
     'sublimelinter_gutter_marks',
+    'sublimelinter_gutter_marks_theme',
     'sublimelinter_mark_style',
     'sublimelinter_notes',
     'sublimelinter_objj_check_ascii',
@@ -69,6 +72,7 @@ ALL_SETTINGS = [
     'sublimelinter_syntax_map',
     'sublimelinter_wrap_find',
 ]
+
 
 WHITESPACE_RE = re.compile(r'\s+')
 

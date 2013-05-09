@@ -71,7 +71,7 @@
         with the outline color, and "none" disables all outline styles
         (useful if "sublimelinter_gutter_marks" is set).
     */
-    "sublimelinter_mark_style": "outline",
+    "sublimelinter_mark_style": "none",
 
     /*
         If true, lines with errors or warnings will be filled in with the
@@ -85,7 +85,7 @@
     "sublimelinter_fill_outlines": false,
 
     // If true, lines with errors or warnings will have a gutter mark.
-    "sublimelinter_gutter_marks": false,
+    "sublimelinter_gutter_marks": true,
 
     // If true, the find next/previous error commands will wrap.
     "sublimelinter_wrap_find": true,
