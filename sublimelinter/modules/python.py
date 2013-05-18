@@ -201,7 +201,11 @@ class Linter(BaseLinter):
         pyflakes_disabled = view.settings().get('pyflakes_disabled', False)
 
         if not pyflakes_disabled:
-            errors.extend(self.pyflakes_check(code, filename, pyflakes_ignore))
+            pyflakes_errors = self.pyflakes_check(code, filename, pyflakes_ignore)
+            pyflakes_ignore_messages = view.settings().get("pyflakes_ignore_messages", None)
+            if pyflakes_ignore_messages:
+                pyflakes_errors = [pe for pe in pyflakes_errors if pe.__class__.__name__ not in pyflakes_ignore_messages]
+            errors.extend(pyflakes_errors)
 
         return errors
 
