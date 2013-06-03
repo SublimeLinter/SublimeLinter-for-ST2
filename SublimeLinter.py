@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 from functools import partial
 import os
 import re
@@ -35,10 +34,16 @@ DELAYS = (
     (1600, (1600, 3000)),
 )
 
-MARKS = {
-    'violation': ('', 'dot'),
-    'warning': ('', 'dot'),
-    'illegal': ('', 'circle'),
+# Select one of the predefined gutter mark themes, the options are:
+# "alpha", "bright", "dark", "hard" and "simple"
+MARK_THEMES = ('alpha', 'bright', 'dark', 'hard', 'simple')
+# The path to the built-in gutter mark themes
+MARK_THEMES_PATH = os.path.join('..', 'SublimeLinter', 'gutter_mark_themes')
+# The original theme for anyone interested the previous minimalist approach
+ORIGINAL_MARK_THEME = {
+    'violation': 'dot',
+    'warning': 'dot',
+    'illegal': 'circle'
 }
 
 # All available settings for SublimeLinter;
@@ -62,6 +67,7 @@ ALL_SETTINGS = [
     'sublimelinter_executable_map',
     'sublimelinter_fill_outlines',
     'sublimelinter_gutter_marks',
+    'sublimelinter_gutter_marks_theme',
     'sublimelinter_mark_style',
     'sublimelinter_notes',
     'sublimelinter_objj_check_ascii',
@@ -69,6 +75,7 @@ ALL_SETTINGS = [
     'sublimelinter_syntax_map',
     'sublimelinter_wrap_find',
 ]
+
 
 WHITESPACE_RE = re.compile(r'\s+')
 
@@ -79,6 +86,8 @@ def get_delay(t, view):
     for _t, d in DELAYS:
         if _t <= t:
             delay = d
+        else:
+            break
 
     delay = delay or DELAYS[0][1]
 
@@ -221,6 +230,8 @@ def add_lint_marks(view, lines, error_underlines, violation_underlines, warning_
 
         gutter_mark_enabled = True if view.settings().get('sublimelinter_gutter_marks', False) else False
 
+        gutter_mark_theme = view.settings().get('sublimelinter_gutter_marks_theme', 'simple')
+
         outlines = {'warning': [], 'violation': [], 'illegal': []}
 
         for line in ERRORS[vid]:
@@ -237,9 +248,20 @@ def add_lint_marks(view, lines, error_underlines, violation_underlines, warning_
                 args = [
                     'lint-outlines-{0}'.format(lint_type),
                     outlines[lint_type],
-                    'sublimelinter.outline.{0}'.format(lint_type),
-                    MARKS[lint_type][gutter_mark_enabled]
+                    'sublimelinter.outline.{0}'.format(lint_type)
                 ]
+
+                gutter_mark_image = ''
+
+                if gutter_mark_enabled:
+                    if gutter_mark_theme == 'original':
+                        gutter_mark_image = ORIGINAL_MARK_THEME[lint_type]
+                    elif gutter_mark_theme in MARK_THEMES:
+                        gutter_mark_image = os.path.join(MARK_THEMES_PATH, gutter_mark_theme + '-' + lint_type)
+                    else:
+                        gutter_mark_image = gutter_mark_theme + '-' + lint_type
+
+                args.append(gutter_mark_image)
 
                 if outline_style == 'none':
                     args.append(sublime.HIDDEN)
@@ -348,9 +370,9 @@ def select_linter(view, ignore_disabled=False):
     syntaxMap = view.settings().get('sublimelinter_syntax_map', {})
 
     if syntax in syntaxMap:
-        language = syntaxMap[syntax].lower()
+        language = syntaxMap.get(syntax, '').lower()
     elif lc_syntax in syntaxMap:
-        language = syntaxMap[lc_syntax].lower()
+        language = syntaxMap(lc_syntax, '').lower()
     elif lc_syntax in LINTERS:
         language = lc_syntax
 
@@ -361,12 +383,12 @@ def select_linter(view, ignore_disabled=False):
             disabled = view.settings().get('sublimelinter_disable', [])
 
         if language not in disabled:
-            linter = LINTERS['' + language]
+            linter = LINTERS.get(language)
 
             # If the enabled state is False, it must be checked.
             # Enabled checking has to be deferred to first view use because
             # user settings cannot be loaded during plugin startup.
-            if not linter.enabled:
+            if linter is not None and not linter.enabled:
                 enabled, message = linter.check_enabled(view)
                 print 'SublimeLinter: {0} {1} ({2})'.format(language, 'enabled' if enabled else 'disabled', message)
 
@@ -732,13 +754,20 @@ class BackgroundLinter(sublime_plugin.EventListener):
     def on_load(self, view):
         reload_settings(view)
 
-        if view.is_scratch() or view.settings().get('sublimelinter') == False or view.settings().get('sublimelinter') == 'save-only':
+        sublimelinter_setting = view.settings().get('sublimelinter')
+
+        if view.is_scratch() or sublimelinter_setting == False or sublimelinter_setting == 'save-only':
             return
 
         queue_linter(select_linter(view), view, event='on_load')
 
     def on_post_save(self, view):
-        if view.is_scratch() or view.settings().get('sublimelinter') == False:
+        sublimelinter_setting = view.settings().get('sublimelinter')
+
+        if sublimelinter_setting == None:
+            reload_settings(view)
+
+        if view.is_scratch() or sublimelinter_setting == False:
             return
 
         reload_view_module(view)

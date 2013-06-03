@@ -1,6 +1,3 @@
-# -*- coding: utf-8 -*-
-# php.py - sublimelint package for checking php files
-
 import re
 
 from base_linter import BaseLinter

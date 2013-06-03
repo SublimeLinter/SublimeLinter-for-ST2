@@ -1,6 +1,3 @@
-# -*- coding: utf-8 -*-
-# cpp.py - sublimelint package for checking C++ files
-
 import re
 
 from base_linter import BaseLinter, INPUT_METHOD_TEMP_FILE

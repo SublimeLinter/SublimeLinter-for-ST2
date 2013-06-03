@@ -1,6 +1,3 @@
-# -*- coding: utf-8 -*-
-# cpp.py - sublimelint package for checking C++ files (based on ruby.py)
-
 import re
 
 from base_linter import BaseLinter

@@ -1,6 +1,3 @@
-# -*- coding: utf-8 -*-
-# javascript.py - sublimelint package for checking JavaScript files
-
 import json
 import re
 import subprocess
@@ -51,7 +48,7 @@ class Linter(BaseLinter):
         if self.linter == 'jshint':
             rc_options = self.find_file('.jshintrc', view)
 
-            if rc_options != None:
+            if rc_options is not None:
                 rc_options = self.strip_json_comments(rc_options)
                 return json.dumps(json.loads(rc_options))
 

@@ -1,6 +1,3 @@
-# -*- coding: utf-8 -*-
-# haml.py - sublimelint package for checking haml files
-
 import re
 
 from base_linter import BaseLinter

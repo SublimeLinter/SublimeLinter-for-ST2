@@ -1,6 +1,3 @@
-# -*- coding: utf-8 -*-
-# css.py - sublimelint package for checking CSS files
-
 import json
 
 from base_linter import BaseLinter

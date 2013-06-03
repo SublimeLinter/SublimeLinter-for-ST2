@@ -1,6 +1,3 @@
-# -*- coding: utf-8 -*-
-# puppet.py - sublimelint package for checking puppet files
-
 import re
 
 from base_linter import BaseLinter, INPUT_METHOD_TEMP_FILE

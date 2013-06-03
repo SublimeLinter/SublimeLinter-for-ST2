@@ -1,5 +1,7 @@
 SublimeLinter 1.5.5 changelog
+=============================
 
 CHANGES/FIXES
-
-- The full change log is available from the SublimeLinter preferences menu.
+-------------
+- This change log is available from the SublimeLinter preferences 
+  menu.

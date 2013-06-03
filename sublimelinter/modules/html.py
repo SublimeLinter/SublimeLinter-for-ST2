@@ -1,6 +1,3 @@
-# -*- coding: utf-8 -*-
-# html.py - sublimelint package for checking html files
-
 # Example error messages
 #
 # line 1 column 1 - Warning: missing <!DOCTYPE> declaration

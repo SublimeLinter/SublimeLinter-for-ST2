@@ -1,6 +1,3 @@
-# -*- coding: utf-8 -*-
-# ruby.py - sublimelint package for checking ruby files
-
 import re
 
 from base_linter import BaseLinter

@@ -1,6 +1,3 @@
-# -*- coding: utf-8 -*-
-# lua.py - sublimelint package for checking lua files
-
 import re
 from base_linter import BaseLinter
 

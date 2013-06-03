@@ -1,5 +1,6 @@
 SublimeLinter 1.6.11 changelog
+==============================
 
 CHANGES/FIXES
-
+-------------
 - Github (nodeload) zip url scheme changed.

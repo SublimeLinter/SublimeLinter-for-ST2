@@ -1,9 +1,3 @@
-''' sublime_pylint.py - sublimelint package for checking python files
-
-pylint is not available as a checker that runs in the background
-as it generally takes much too long.
-'''
-
 from StringIO import StringIO
 import tempfile
 

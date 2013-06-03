@@ -9,8 +9,8 @@
 			"platforms": {
 				"*": [
 					{
-						"version": "1.6.13",
-						"url": "https://nodeload.github.com/SublimeLinter/SublimeLinter/zip/v1.6.13"
+						"version": "1.7.0",
+						"url": "https://nodeload.github.com/SublimeLinter/SublimeLinter/zip/v1.7.0"
 					}
 				]
 			}
@@ -23,7 +23,7 @@
 			"platforms": {
 				"*": [
 					{
-						"version": "1.7.0-beta.3",
+						"version": "1.7.1-beta.0",
 						"url": "https://nodeload.github.com/SublimeLinter/SublimeLinter/zip/beta"
 					}
 				]

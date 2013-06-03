@@ -1,6 +1,3 @@
-# -*- coding: utf-8 -*-
-# java.py - sublimelint package for checking java files
-
 import os
 import os.path
 import re

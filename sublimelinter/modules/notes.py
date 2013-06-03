@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 '''notes.py
 
 Used to highlight user-defined "annotations" such as TODO, README, etc.,

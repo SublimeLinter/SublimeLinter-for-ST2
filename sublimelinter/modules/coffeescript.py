@@ -1,6 +1,3 @@
-# -*- coding: utf-8 -*-
-# coffeescript.py - sublimelint package for checking coffee files
-
 import re
 import os
 
@@ -24,6 +21,9 @@ class Linter(BaseLinter):
             if not match:
                 match = re.match(r'.*?Error: (?P<error>.+) '
                                  r'on line (?P<line>\d+)', line)
+            if not match:
+                match = re.match(r'[^:]+:(?P<line>\d+):\d+: '
+                                 r'error: (?P<error>.+)', line)
 
             if match:
                 line, error = match.group('line'), match.group('error')

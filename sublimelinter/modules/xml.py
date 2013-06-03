@@ -1,6 +1,3 @@
-# -*- coding: utf-8 -*-
-# xml.py - sublimelint package for checking xml files
-
 import re
 
 from base_linter import BaseLinter

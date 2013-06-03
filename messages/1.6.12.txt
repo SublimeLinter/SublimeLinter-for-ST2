@@ -1,7 +1,8 @@
 SublimeLinter 1.6.12 changelog
+==============================
 
 CHANGES/FIXES
-
-- cpplint no longer uses a temporary file - it leverages stdin instead.
-
+-------------
+- Cpplint no longer uses a temporary file - it leverages stdin
+  instead.
 - Fixed issue #298: C linter throws "KeyError"

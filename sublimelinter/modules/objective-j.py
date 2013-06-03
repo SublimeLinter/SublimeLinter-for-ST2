@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # objective-j.py - Lint checking for Objective-J - given filename and contents of the code:
 # It provides a list of line numbers to outline and offsets to highlight.
 #
