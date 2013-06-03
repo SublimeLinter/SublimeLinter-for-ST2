@@ -1,4 +1,4 @@
-//2.1.2
+//2.1.3
 var JSHINT;
 (function () {
 var require;
@@ -621,21 +621,23 @@ exports.couch = {
 };
 
 exports.node = {
-    __filename   : false,
-    __dirname    : false,
-    Buffer       : false,
-    DataView     : false,
-    console      : false,
-    exports      : true,  // In Node it is ok to exports = module.exports = foo();
-    GLOBAL       : false,
-    global       : false,
-    module       : false,
-    process      : false,
-    require      : false,
-    setTimeout   : false,
-    clearTimeout : false,
-    setInterval  : false,
-    clearInterval: false
+    __filename    : false,
+    __dirname     : false,
+    Buffer        : false,
+    DataView      : false,
+    console       : false,
+    exports       : true,  // In Node it is ok to exports = module.exports = foo();
+    GLOBAL        : false,
+    global        : false,
+    module        : false,
+    process       : false,
+    require       : false,
+    setTimeout    : false,
+    clearTimeout  : false,
+    setInterval   : false,
+    clearInterval : false,
+    setImmediate  : false, // v0.9.1+
+    clearImmediate: false  // v0.9.1+
 };
 
 exports.phantom = {
@@ -793,40 +795,30 @@ exports.yui = {
 
 })()
 },{}],4:[function(require,module,exports){
-/*
- * Regular expressions. Some of these are stupidly long.
- */
+"use strict";
 
-/*jshint maxlen:1000 */
+var state = {
+    syntax: {},
 
-"use string";
+    reset: function () {
+        this.tokens = {
+            prev: null,
+            next: null,
+            curr: null
+        };
 
-// Unsafe comment or string (ax)
-exports.unsafeString =
-    /@cc|<\/?|script|\]\s*\]|<\s*!|&lt/i;
+        this.option = {};
+        this.ignored = {};
+        this.directive = {};
+        this.jsonMode = false;
+        this.jsonWarnings = [];
+        this.lines = [];
+        this.tab = "";
+        this.cache = {}; // Node.JS doesn't have Map. Sniff.
+    }
+};
 
-// Unsafe characters that are silently deleted by one or more browsers (cx)
-exports.unsafeChars =
-    /[\u0000-\u001f\u007f-\u009f\u00ad\u0600-\u0604\u070f\u17b4\u17b5\u200c-\u200f\u2028-\u202f\u2060-\u206f\ufeff\ufff0-\uffff]/;
-
-// Characters in strings that need escaping (nx and nxg)
-exports.needEsc =
-    /[\u0000-\u001f&<"\/\\\u007f-\u009f\u00ad\u0600-\u0604\u070f\u17b4\u17b5\u200c-\u200f\u2028-\u202f\u2060-\u206f\ufeff\ufff0-\uffff]/;
-
-exports.needEscGlobal =
-    /[\u0000-\u001f&<"\/\\\u007f-\u009f\u00ad\u0600-\u0604\u070f\u17b4\u17b5\u200c-\u200f\u2028-\u202f\u2060-\u206f\ufeff\ufff0-\uffff]/g;
-
-// Star slash (lx)
-exports.starSlash = /\*\//;
-
-// Identifier (ix)
-exports.identifier = /^([a-zA-Z_$][a-zA-Z0-9_$]*)$/;
-
-// JavaScript URL (jx)
-exports.javascriptURL = /^(?:javascript|jscript|ecmascript|vbscript|mocha|livescript)\s*:/i;
-
-// Catches /* falls through */ comments (ft)
-exports.fallsThrough = /^\s*\/\*\s*falls?\sthrough\s*\*\/\s*$/;
+exports.state = state;
 
 },{}],5:[function(require,module,exports){
 (function(){"use strict";
@@ -1002,32 +994,1738 @@ exports.register = function (linter) {
 };
 })()
 },{}],6:[function(require,module,exports){
+/*
+ * Regular expressions. Some of these are stupidly long.
+ */
+
+/*jshint maxlen:1000 */
+
+"use string";
+
+// Unsafe comment or string (ax)
+exports.unsafeString =
+    /@cc|<\/?|script|\]\s*\]|<\s*!|&lt/i;
+
+// Unsafe characters that are silently deleted by one or more browsers (cx)
+exports.unsafeChars =
+    /[\u0000-\u001f\u007f-\u009f\u00ad\u0600-\u0604\u070f\u17b4\u17b5\u200c-\u200f\u2028-\u202f\u2060-\u206f\ufeff\ufff0-\uffff]/;
+
+// Characters in strings that need escaping (nx and nxg)
+exports.needEsc =
+    /[\u0000-\u001f&<"\/\\\u007f-\u009f\u00ad\u0600-\u0604\u070f\u17b4\u17b5\u200c-\u200f\u2028-\u202f\u2060-\u206f\ufeff\ufff0-\uffff]/;
+
+exports.needEscGlobal =
+    /[\u0000-\u001f&<"\/\\\u007f-\u009f\u00ad\u0600-\u0604\u070f\u17b4\u17b5\u200c-\u200f\u2028-\u202f\u2060-\u206f\ufeff\ufff0-\uffff]/g;
+
+// Star slash (lx)
+exports.starSlash = /\*\//;
+
+// Identifier (ix)
+exports.identifier = /^([a-zA-Z_$][a-zA-Z0-9_$]*)$/;
+
+// JavaScript URL (jx)
+exports.javascriptURL = /^(?:javascript|jscript|ecmascript|vbscript|mocha|livescript)\s*:/i;
+
+// Catches /* falls through */ comments (ft)
+exports.fallsThrough = /^\s*\/\*\s*falls?\sthrough\s*\*\/\s*$/;
+
+},{}],7:[function(require,module,exports){
+},{"util":8,"assert":9}],10:[function(require,module,exports){
+(function(){/*
+ * Lexical analysis and token construction.
+ */
+
 "use strict";
 
-var state = {
-    syntax: {},
+var _      = require("underscore");
+var events = require("events");
+var reg    = require("./reg.js");
+var state  = require("./state.js").state;
 
-    reset: function () {
-        this.tokens = {
-            prev: null,
-            next: null,
-            curr: null
+// Some of these token types are from JavaScript Parser API
+// while others are specific to JSHint parser.
+// JS Parser API: https://developer.mozilla.org/en-US/docs/SpiderMonkey/Parser_API
+
+var Token = {
+    Identifier: 1,
+    Punctuator: 2,
+    NumericLiteral: 3,
+    StringLiteral: 4,
+    Comment: 5,
+    Keyword: 6,
+    NullLiteral: 7,
+    BooleanLiteral: 8,
+    RegExp: 9
+};
+
+// This is auto generated from the unicode tables.
+// The tables are at:
+// http://www.fileformat.info/info/unicode/category/Lu/list.htm
+// http://www.fileformat.info/info/unicode/category/Ll/list.htm
+// http://www.fileformat.info/info/unicode/category/Lt/list.htm
+// http://www.fileformat.info/info/unicode/category/Lm/list.htm
+// http://www.fileformat.info/info/unicode/category/Lo/list.htm
+// http://www.fileformat.info/info/unicode/category/Nl/list.htm
+
+var unicodeLetterTable = [
+    170, 170, 181, 181, 186, 186, 192, 214,
+    216, 246, 248, 705, 710, 721, 736, 740, 748, 748, 750, 750,
+    880, 884, 886, 887, 890, 893, 902, 902, 904, 906, 908, 908,
+    910, 929, 931, 1013, 1015, 1153, 1162, 1319, 1329, 1366,
+    1369, 1369, 1377, 1415, 1488, 1514, 1520, 1522, 1568, 1610,
+    1646, 1647, 1649, 1747, 1749, 1749, 1765, 1766, 1774, 1775,
+    1786, 1788, 1791, 1791, 1808, 1808, 1810, 1839, 1869, 1957,
+    1969, 1969, 1994, 2026, 2036, 2037, 2042, 2042, 2048, 2069,
+    2074, 2074, 2084, 2084, 2088, 2088, 2112, 2136, 2308, 2361,
+    2365, 2365, 2384, 2384, 2392, 2401, 2417, 2423, 2425, 2431,
+    2437, 2444, 2447, 2448, 2451, 2472, 2474, 2480, 2482, 2482,
+    2486, 2489, 2493, 2493, 2510, 2510, 2524, 2525, 2527, 2529,
+    2544, 2545, 2565, 2570, 2575, 2576, 2579, 2600, 2602, 2608,
+    2610, 2611, 2613, 2614, 2616, 2617, 2649, 2652, 2654, 2654,
+    2674, 2676, 2693, 2701, 2703, 2705, 2707, 2728, 2730, 2736,
+    2738, 2739, 2741, 2745, 2749, 2749, 2768, 2768, 2784, 2785,
+    2821, 2828, 2831, 2832, 2835, 2856, 2858, 2864, 2866, 2867,
+    2869, 2873, 2877, 2877, 2908, 2909, 2911, 2913, 2929, 2929,
+    2947, 2947, 2949, 2954, 2958, 2960, 2962, 2965, 2969, 2970,
+    2972, 2972, 2974, 2975, 2979, 2980, 2984, 2986, 2990, 3001,
+    3024, 3024, 3077, 3084, 3086, 3088, 3090, 3112, 3114, 3123,
+    3125, 3129, 3133, 3133, 3160, 3161, 3168, 3169, 3205, 3212,
+    3214, 3216, 3218, 3240, 3242, 3251, 3253, 3257, 3261, 3261,
+    3294, 3294, 3296, 3297, 3313, 3314, 3333, 3340, 3342, 3344,
+    3346, 3386, 3389, 3389, 3406, 3406, 3424, 3425, 3450, 3455,
+    3461, 3478, 3482, 3505, 3507, 3515, 3517, 3517, 3520, 3526,
+    3585, 3632, 3634, 3635, 3648, 3654, 3713, 3714, 3716, 3716,
+    3719, 3720, 3722, 3722, 3725, 3725, 3732, 3735, 3737, 3743,
+    3745, 3747, 3749, 3749, 3751, 3751, 3754, 3755, 3757, 3760,
+    3762, 3763, 3773, 3773, 3776, 3780, 3782, 3782, 3804, 3805,
+    3840, 3840, 3904, 3911, 3913, 3948, 3976, 3980, 4096, 4138,
+    4159, 4159, 4176, 4181, 4186, 4189, 4193, 4193, 4197, 4198,
+    4206, 4208, 4213, 4225, 4238, 4238, 4256, 4293, 4304, 4346,
+    4348, 4348, 4352, 4680, 4682, 4685, 4688, 4694, 4696, 4696,
+    4698, 4701, 4704, 4744, 4746, 4749, 4752, 4784, 4786, 4789,
+    4792, 4798, 4800, 4800, 4802, 4805, 4808, 4822, 4824, 4880,
+    4882, 4885, 4888, 4954, 4992, 5007, 5024, 5108, 5121, 5740,
+    5743, 5759, 5761, 5786, 5792, 5866, 5870, 5872, 5888, 5900,
+    5902, 5905, 5920, 5937, 5952, 5969, 5984, 5996, 5998, 6000,
+    6016, 6067, 6103, 6103, 6108, 6108, 6176, 6263, 6272, 6312,
+    6314, 6314, 6320, 6389, 6400, 6428, 6480, 6509, 6512, 6516,
+    6528, 6571, 6593, 6599, 6656, 6678, 6688, 6740, 6823, 6823,
+    6917, 6963, 6981, 6987, 7043, 7072, 7086, 7087, 7104, 7141,
+    7168, 7203, 7245, 7247, 7258, 7293, 7401, 7404, 7406, 7409,
+    7424, 7615, 7680, 7957, 7960, 7965, 7968, 8005, 8008, 8013,
+    8016, 8023, 8025, 8025, 8027, 8027, 8029, 8029, 8031, 8061,
+    8064, 8116, 8118, 8124, 8126, 8126, 8130, 8132, 8134, 8140,
+    8144, 8147, 8150, 8155, 8160, 8172, 8178, 8180, 8182, 8188,
+    8305, 8305, 8319, 8319, 8336, 8348, 8450, 8450, 8455, 8455,
+    8458, 8467, 8469, 8469, 8473, 8477, 8484, 8484, 8486, 8486,
+    8488, 8488, 8490, 8493, 8495, 8505, 8508, 8511, 8517, 8521,
+    8526, 8526, 8544, 8584, 11264, 11310, 11312, 11358,
+    11360, 11492, 11499, 11502, 11520, 11557, 11568, 11621,
+    11631, 11631, 11648, 11670, 11680, 11686, 11688, 11694,
+    11696, 11702, 11704, 11710, 11712, 11718, 11720, 11726,
+    11728, 11734, 11736, 11742, 11823, 11823, 12293, 12295,
+    12321, 12329, 12337, 12341, 12344, 12348, 12353, 12438,
+    12445, 12447, 12449, 12538, 12540, 12543, 12549, 12589,
+    12593, 12686, 12704, 12730, 12784, 12799, 13312, 13312,
+    19893, 19893, 19968, 19968, 40907, 40907, 40960, 42124,
+    42192, 42237, 42240, 42508, 42512, 42527, 42538, 42539,
+    42560, 42606, 42623, 42647, 42656, 42735, 42775, 42783,
+    42786, 42888, 42891, 42894, 42896, 42897, 42912, 42921,
+    43002, 43009, 43011, 43013, 43015, 43018, 43020, 43042,
+    43072, 43123, 43138, 43187, 43250, 43255, 43259, 43259,
+    43274, 43301, 43312, 43334, 43360, 43388, 43396, 43442,
+    43471, 43471, 43520, 43560, 43584, 43586, 43588, 43595,
+    43616, 43638, 43642, 43642, 43648, 43695, 43697, 43697,
+    43701, 43702, 43705, 43709, 43712, 43712, 43714, 43714,
+    43739, 43741, 43777, 43782, 43785, 43790, 43793, 43798,
+    43808, 43814, 43816, 43822, 43968, 44002, 44032, 44032,
+    55203, 55203, 55216, 55238, 55243, 55291, 63744, 64045,
+    64048, 64109, 64112, 64217, 64256, 64262, 64275, 64279,
+    64285, 64285, 64287, 64296, 64298, 64310, 64312, 64316,
+    64318, 64318, 64320, 64321, 64323, 64324, 64326, 64433,
+    64467, 64829, 64848, 64911, 64914, 64967, 65008, 65019,
+    65136, 65140, 65142, 65276, 65313, 65338, 65345, 65370,
+    65382, 65470, 65474, 65479, 65482, 65487, 65490, 65495,
+    65498, 65500, 65536, 65547, 65549, 65574, 65576, 65594,
+    65596, 65597, 65599, 65613, 65616, 65629, 65664, 65786,
+    65856, 65908, 66176, 66204, 66208, 66256, 66304, 66334,
+    66352, 66378, 66432, 66461, 66464, 66499, 66504, 66511,
+    66513, 66517, 66560, 66717, 67584, 67589, 67592, 67592,
+    67594, 67637, 67639, 67640, 67644, 67644, 67647, 67669,
+    67840, 67861, 67872, 67897, 68096, 68096, 68112, 68115,
+    68117, 68119, 68121, 68147, 68192, 68220, 68352, 68405,
+    68416, 68437, 68448, 68466, 68608, 68680, 69635, 69687,
+    69763, 69807, 73728, 74606, 74752, 74850, 77824, 78894,
+    92160, 92728, 110592, 110593, 119808, 119892, 119894, 119964,
+    119966, 119967, 119970, 119970, 119973, 119974, 119977, 119980,
+    119982, 119993, 119995, 119995, 119997, 120003, 120005, 120069,
+    120071, 120074, 120077, 120084, 120086, 120092, 120094, 120121,
+    120123, 120126, 120128, 120132, 120134, 120134, 120138, 120144,
+    120146, 120485, 120488, 120512, 120514, 120538, 120540, 120570,
+    120572, 120596, 120598, 120628, 120630, 120654, 120656, 120686,
+    120688, 120712, 120714, 120744, 120746, 120770, 120772, 120779,
+    131072, 131072, 173782, 173782, 173824, 173824, 177972, 177972,
+    177984, 177984, 178205, 178205, 194560, 195101
+];
+
+var identifierStartTable = [];
+
+for (var i = 0; i < 128; i++) {
+    identifierStartTable[i] =
+        i === 36 ||           // $
+        i >= 65 && i <= 90 || // A-Z
+        i === 95 ||           // _
+        i >= 97 && i <= 122;  // a-z
+}
+
+var identifierPartTable = [];
+
+for (var i = 0; i < 128; i++) {
+    identifierPartTable[i] =
+        identifierStartTable[i] || // $, _, A-Z, a-z
+        i >= 48 && i <= 57;        // 0-9
+}
+
+// Object that handles postponed lexing verifications that checks the parsed
+// environment state.
+
+function asyncTrigger() {
+    var _checks = [];
+
+    return {
+        push: function (fn) {
+            _checks.push(fn);
         },
 
-        this.option = {};
-        this.ignored = {};
-        this.directive = {};
-        this.jsonMode = false;
-        this.jsonWarnings = [];
-        this.lines = [];
-        this.tab = "";
-        this.cache = {}; // Node.JS doesn't have Map. Sniff.
+        check: function () {
+            for (var check in _checks) {
+                _checks[check]();
+            }
+
+            _checks.splice(0, _checks.length);
+        }
+    };
+}
+
+/*
+ * Lexer for JSHint.
+ *
+ * This object does a char-by-char scan of the provided source code
+ * and produces a sequence of tokens.
+ *
+ *   var lex = new Lexer("var i = 0;");
+ *   lex.start();
+ *   lex.token(); // returns the next token
+ *
+ * You have to use the token() method to move the lexer forward
+ * but you don't have to use its return value to get tokens. In addition
+ * to token() method returning the next token, the Lexer object also
+ * emits events.
+ *
+ *   lex.on("Identifier", function (data) {
+ *     if (data.name.indexOf("_") >= 0) {
+ *       // Produce a warning.
+ *     }
+ *   });
+ *
+ * Note that the token() method returns tokens in a JSLint-compatible
+ * format while the event emitter uses a slightly modified version of
+ * Mozilla's JavaScript Parser API. Eventually, we will move away from
+ * JSLint format.
+ */
+function Lexer(source) {
+    var lines = source;
+
+    if (typeof lines === "string") {
+        lines = lines
+            .replace(/\r\n/g, "\n")
+            .replace(/\r/g, "\n")
+            .split("\n");
+    }
+
+    // If the first line is a shebang (#!), make it a blank and move on.
+    // Shebangs are used by Node scripts.
+
+    if (lines[0] && lines[0].substr(0, 2) === "#!") {
+        lines[0] = "";
+    }
+
+    this.emitter = new events.EventEmitter();
+    this.source = source;
+    this.lines = lines;
+    this.prereg = true;
+
+    this.line = 0;
+    this.char = 1;
+    this.from = 1;
+    this.input = "";
+
+    for (var i = 0; i < state.option.indent; i += 1) {
+        state.tab += " ";
+    }
+}
+
+Lexer.prototype = {
+    _lines: [],
+
+    get lines() {
+        this._lines = state.lines;
+        return this._lines;
+    },
+
+    set lines(val) {
+        this._lines = val;
+        state.lines = this._lines;
+    },
+
+    /*
+     * Return the next i character without actually moving the
+     * char pointer.
+     */
+    peek: function (i) {
+        return this.input.charAt(i || 0);
+    },
+
+    /*
+     * Move the char pointer forward i times.
+     */
+    skip: function (i) {
+        i = i || 1;
+        this.char += i;
+        this.input = this.input.slice(i);
+    },
+
+    /*
+     * Subscribe to a token event. The API for this method is similar
+     * Underscore.js i.e. you can subscribe to multiple events with
+     * one call:
+     *
+     *   lex.on("Identifier Number", function (data) {
+     *     // ...
+     *   });
+     */
+    on: function (names, listener) {
+        names.split(" ").forEach(function (name) {
+            this.emitter.on(name, listener);
+        }.bind(this));
+    },
+
+    /*
+     * Trigger a token event. All arguments will be passed to each
+     * listener.
+     */
+    trigger: function () {
+        this.emitter.emit.apply(this.emitter, Array.prototype.slice.call(arguments));
+    },
+
+    /*
+     * Postpone a token event. the checking condition is set as
+     * last parameter, and the trigger function is called in a
+     * stored callback. To be later called using the check() function
+     * by the parser. This avoids parser's peek() to give the lexer
+     * a false context.
+     */
+    triggerAsync: function (type, args, checks, fn) {
+        checks.push(function () {
+            if (fn()) {
+                this.trigger(type, args);
+            }
+        }.bind(this));
+    },
+
+    /*
+     * Extract a punctuator out of the next sequence of characters
+     * or return 'null' if its not possible.
+     *
+     * This method's implementation was heavily influenced by the
+     * scanPunctuator function in the Esprima parser's source code.
+     */
+    scanPunctuator: function () {
+        var ch1 = this.peek();
+        var ch2, ch3, ch4;
+
+        switch (ch1) {
+        // Most common single-character punctuators
+        case ".":
+            if ((/^[0-9]$/).test(this.peek(1))) {
+                return null;
+            }
+            if (this.peek(1) === "." && this.peek(2) === ".") {
+                return {
+                    type: Token.Punctuator,
+                    value: "..."
+                };
+            }
+            /* falls through */
+        case "(":
+        case ")":
+        case ";":
+        case ",":
+        case "{":
+        case "}":
+        case "[":
+        case "]":
+        case ":":
+        case "~":
+        case "?":
+            return {
+                type: Token.Punctuator,
+                value: ch1
+            };
+
+        // A pound sign (for Node shebangs)
+        case "#":
+            return {
+                type: Token.Punctuator,
+                value: ch1
+            };
+
+        // We're at the end of input
+        case "":
+            return null;
+        }
+
+        // Peek more characters
+
+        ch2 = this.peek(1);
+        ch3 = this.peek(2);
+        ch4 = this.peek(3);
+
+        // 4-character punctuator: >>>=
+
+        if (ch1 === ">" && ch2 === ">" && ch3 === ">" && ch4 === "=") {
+            return {
+                type: Token.Punctuator,
+                value: ">>>="
+            };
+        }
+
+        // 3-character punctuators: === !== >>> <<= >>=
+
+        if (ch1 === "=" && ch2 === "=" && ch3 === "=") {
+            return {
+                type: Token.Punctuator,
+                value: "==="
+            };
+        }
+
+        if (ch1 === "!" && ch2 === "=" && ch3 === "=") {
+            return {
+                type: Token.Punctuator,
+                value: "!=="
+            };
+        }
+
+        if (ch1 === ">" && ch2 === ">" && ch3 === ">") {
+            return {
+                type: Token.Punctuator,
+                value: ">>>"
+            };
+        }
+
+        if (ch1 === "<" && ch2 === "<" && ch3 === "=") {
+            return {
+                type: Token.Punctuator,
+                value: "<<="
+            };
+        }
+
+        if (ch1 === ">" && ch2 === ">" && ch3 === "=") {
+            return {
+                type: Token.Punctuator,
+                value: ">>="
+            };
+        }
+
+        // Fat arrow punctuator
+        if (ch1 === "=" && ch2 === ">") {
+            return {
+                type: Token.Punctuator,
+                value: ch1 + ch2
+            };
+        }
+
+        // 2-character punctuators: <= >= == != ++ -- << >> && ||
+        // += -= *= %= &= |= ^= (but not /=, see below)
+        if (ch1 === ch2 && ("+-<>&|".indexOf(ch1) >= 0)) {
+            return {
+                type: Token.Punctuator,
+                value: ch1 + ch2
+            };
+        }
+
+        if ("<>=!+-*%&|^".indexOf(ch1) >= 0) {
+            if (ch2 === "=") {
+                return {
+                    type: Token.Punctuator,
+                    value: ch1 + ch2
+                };
+            }
+
+            return {
+                type: Token.Punctuator,
+                value: ch1
+            };
+        }
+
+        // Special case: /=. We need to make sure that this is an
+        // operator and not a regular expression.
+
+        if (ch1 === "/") {
+            if (ch2 === "=" && /\/=(?!(\S*\/[gim]?))/.test(this.input)) {
+                // /= is not a part of a regular expression, return it as a
+                // punctuator.
+                return {
+                    type: Token.Punctuator,
+                    value: "/="
+                };
+            }
+
+            return {
+                type: Token.Punctuator,
+                value: "/"
+            };
+        }
+
+        return null;
+    },
+
+    /*
+     * Extract a comment out of the next sequence of characters and/or
+     * lines or return 'null' if its not possible. Since comments can
+     * span across multiple lines this method has to move the char
+     * pointer.
+     *
+     * In addition to normal JavaScript comments (// and /*) this method
+     * also recognizes JSHint- and JSLint-specific comments such as
+     * /*jshint, /*jslint, /*globals and so on.
+     */
+    scanComments: function () {
+        var ch1 = this.peek();
+        var ch2 = this.peek(1);
+        var rest = this.input.substr(2);
+        var startLine = this.line;
+        var startChar = this.char;
+
+        // Create a comment token object and make sure it
+        // has all the data JSHint needs to work with special
+        // comments.
+
+        function commentToken(label, body, opt) {
+            var special = ["jshint", "jslint", "members", "member", "globals", "global", "exported"];
+            var isSpecial = false;
+            var value = label + body;
+            var commentType = "plain";
+            opt = opt || {};
+
+            if (opt.isMultiline) {
+                value += "*/";
+            }
+
+            special.forEach(function (str) {
+                if (isSpecial) {
+                    return;
+                }
+
+                // Don't recognize any special comments other than jshint for single-line
+                // comments. This introduced many problems with legit comments.
+                if (label === "//" && str !== "jshint") {
+                    return;
+                }
+
+                if (body.substr(0, str.length) === str) {
+                    isSpecial = true;
+                    label = label + str;
+                    body = body.substr(str.length);
+                }
+
+                if (!isSpecial && body.charAt(0) === " " && body.substr(1, str.length) === str) {
+                    isSpecial = true;
+                    label = label + " " + str;
+                    body = body.substr(str.length + 1);
+                }
+
+                if (!isSpecial) {
+                    return;
+                }
+
+                switch (str) {
+                case "member":
+                    commentType = "members";
+                    break;
+                case "global":
+                    commentType = "globals";
+                    break;
+                default:
+                    commentType = str;
+                }
+            });
+
+            return {
+                type: Token.Comment,
+                commentType: commentType,
+                value: value,
+                body: body,
+                isSpecial: isSpecial,
+                isMultiline: opt.isMultiline || false,
+                isMalformed: opt.isMalformed || false
+            };
+        }
+
+        // End of unbegun comment. Raise an error and skip that input.
+        if (ch1 === "*" && ch2 === "/") {
+            this.trigger("error", {
+                code: "E018",
+                line: startLine,
+                character: startChar
+            });
+
+            this.skip(2);
+            return null;
+        }
+
+        // Comments must start either with // or /*
+        if (ch1 !== "/" || (ch2 !== "*" && ch2 !== "/")) {
+            return null;
+        }
+
+        // One-line comment
+        if (ch2 === "/") {
+            this.skip(this.input.length); // Skip to the EOL.
+            return commentToken("//", rest);
+        }
+
+        var body = "";
+
+        /* Multi-line comment */
+        if (ch2 === "*") {
+            this.skip(2);
+
+            while (this.peek() !== "*" || this.peek(1) !== "/") {
+                if (this.peek() === "") { // End of Line
+                    body += "\n";
+
+                    // If we hit EOF and our comment is still unclosed,
+                    // trigger an error and end the comment implicitly.
+                    if (!this.nextLine()) {
+                        this.trigger("error", {
+                            code: "E017",
+                            line: startLine,
+                            character: startChar
+                        });
+
+                        return commentToken("/*", body, {
+                            isMultiline: true,
+                            isMalformed: true
+                        });
+                    }
+                } else {
+                    body += this.peek();
+                    this.skip();
+                }
+            }
+
+            this.skip(2);
+            return commentToken("/*", body, { isMultiline: true });
+        }
+    },
+
+    /*
+     * Extract a keyword out of the next sequence of characters or
+     * return 'null' if its not possible.
+     */
+    scanKeyword: function () {
+        var result = /^[a-zA-Z_$][a-zA-Z0-9_$]*/.exec(this.input);
+        var keywords = [
+            "if", "in", "do", "var", "for", "new",
+            "try", "let", "this", "else", "case",
+            "void", "with", "enum", "while", "break",
+            "catch", "throw", "const", "yield", "class",
+            "super", "return", "typeof", "delete",
+            "switch", "export", "import", "default",
+            "finally", "extends", "function", "continue",
+            "debugger", "instanceof"
+        ];
+
+        if (result && keywords.indexOf(result[0]) >= 0) {
+            return {
+                type: Token.Keyword,
+                value: result[0]
+            };
+        }
+
+        return null;
+    },
+
+    /*
+     * Extract a JavaScript identifier out of the next sequence of
+     * characters or return 'null' if its not possible. In addition,
+     * to Identifier this method can also produce BooleanLiteral
+     * (true/false) and NullLiteral (null).
+     */
+    scanIdentifier: function () {
+        var id = "";
+        var index = 0;
+        var type, char;
+
+        // Detects any character in the Unicode categories "Uppercase
+        // letter (Lu)", "Lowercase letter (Ll)", "Titlecase letter
+        // (Lt)", "Modifier letter (Lm)", "Other letter (Lo)", or
+        // "Letter number (Nl)".
+        //
+        // Both approach and unicodeLetterTable were borrowed from
+        // Google's Traceur.
+
+        function isUnicodeLetter(code) {
+            for (var i = 0; i < unicodeLetterTable.length;) {
+                if (code < unicodeLetterTable[i++]) {
+                    return false;
+                }
+
+                if (code <= unicodeLetterTable[i++]) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        function isHexDigit(str) {
+            return (/^[0-9a-fA-F]$/).test(str);
+        }
+
+        var readUnicodeEscapeSequence = function () {
+            /*jshint validthis:true */
+            index += 1;
+
+            if (this.peek(index) !== "u") {
+                return null;
+            }
+
+            var ch1 = this.peek(index + 1);
+            var ch2 = this.peek(index + 2);
+            var ch3 = this.peek(index + 3);
+            var ch4 = this.peek(index + 4);
+            var code;
+
+            if (isHexDigit(ch1) && isHexDigit(ch2) && isHexDigit(ch3) && isHexDigit(ch4)) {
+                code = parseInt(ch1 + ch2 + ch3 + ch4, 16);
+
+                if (isUnicodeLetter(code)) {
+                    index += 5;
+                    return "\\u" + ch1 + ch2 + ch3 + ch4;
+                }
+
+                return null;
+            }
+
+            return null;
+        }.bind(this);
+
+        var getIdentifierStart = function () {
+            /*jshint validthis:true */
+            var chr = this.peek(index);
+            var code = chr.charCodeAt(0);
+
+            if (code === 92) {
+                return readUnicodeEscapeSequence();
+            }
+
+            if (code < 128) {
+                if (identifierStartTable[code]) {
+                    index += 1;
+                    return chr;
+                }
+
+                return null;
+            }
+
+            if (isUnicodeLetter(code)) {
+                index += 1;
+                return chr;
+            }
+
+            return null;
+        }.bind(this);
+
+        var getIdentifierPart = function () {
+            /*jshint validthis:true */
+            var chr = this.peek(index);
+            var code = chr.charCodeAt(0);
+
+            if (code === 92) {
+                return readUnicodeEscapeSequence();
+            }
+
+            if (code < 128) {
+                if (identifierPartTable[code]) {
+                    index += 1;
+                    return chr;
+                }
+
+                return null;
+            }
+
+            if (isUnicodeLetter(code)) {
+                index += 1;
+                return chr;
+            }
+
+            return null;
+        }.bind(this);
+
+        char = getIdentifierStart();
+        if (char === null) {
+            return null;
+        }
+
+        id = char;
+        for (;;) {
+            char = getIdentifierPart();
+
+            if (char === null) {
+                break;
+            }
+
+            id += char;
+        }
+
+        switch (id) {
+        case "true":
+        case "false":
+            type = Token.BooleanLiteral;
+            break;
+        case "null":
+            type = Token.NullLiteral;
+            break;
+        default:
+            type = Token.Identifier;
+        }
+
+        return {
+            type: type,
+            value: id
+        };
+    },
+
+    /*
+     * Extract a numeric literal out of the next sequence of
+     * characters or return 'null' if its not possible. This method
+     * supports all numeric literals described in section 7.8.3
+     * of the EcmaScript 5 specification.
+     *
+     * This method's implementation was heavily influenced by the
+     * scanNumericLiteral function in the Esprima parser's source code.
+     */
+    scanNumericLiteral: function () {
+        var index = 0;
+        var value = "";
+        var length = this.input.length;
+        var char = this.peek(index);
+        var bad;
+
+        function isDecimalDigit(str) {
+            return (/^[0-9]$/).test(str);
+        }
+
+        function isOctalDigit(str) {
+            return (/^[0-7]$/).test(str);
+        }
+
+        function isHexDigit(str) {
+            return (/^[0-9a-fA-F]$/).test(str);
+        }
+
+        function isIdentifierStart(ch) {
+            return (ch === "$") || (ch === "_") || (ch === "\\") ||
+                (ch >= "a" && ch <= "z") || (ch >= "A" && ch <= "Z");
+        }
+
+        // Numbers must start either with a decimal digit or a point.
+
+        if (char !== "." && !isDecimalDigit(char)) {
+            return null;
+        }
+
+        if (char !== ".") {
+            value = this.peek(index);
+            index += 1;
+            char = this.peek(index);
+
+            if (value === "0") {
+                // Base-16 numbers.
+                if (char === "x" || char === "X") {
+                    index += 1;
+                    value += char;
+
+                    while (index < length) {
+                        char = this.peek(index);
+                        if (!isHexDigit(char)) {
+                            break;
+                        }
+                        value += char;
+                        index += 1;
+                    }
+
+                    if (value.length <= 2) { // 0x
+                        return {
+                            type: Token.NumericLiteral,
+                            value: value,
+                            isMalformed: true
+                        };
+                    }
+
+                    if (index < length) {
+                        char = this.peek(index);
+                        if (isIdentifierStart(char)) {
+                            return null;
+                        }
+                    }
+
+                    return {
+                        type: Token.NumericLiteral,
+                        value: value,
+                        base: 16,
+                        isMalformed: false
+                    };
+                }
+
+                // Base-8 numbers.
+                if (isOctalDigit(char)) {
+                    index += 1;
+                    value += char;
+                    bad = false;
+
+                    while (index < length) {
+                        char = this.peek(index);
+
+                        // Numbers like '019' (note the 9) are not valid octals
+                        // but we still parse them and mark as malformed.
+
+                        if (isDecimalDigit(char)) {
+                            bad = true;
+                        } else if (!isOctalDigit(char)) {
+                            break;
+                        }
+                        value += char;
+                        index += 1;
+                    }
+
+                    if (index < length) {
+                        char = this.peek(index);
+                        if (isIdentifierStart(char)) {
+                            return null;
+                        }
+                    }
+
+                    return {
+                        type: Token.NumericLiteral,
+                        value: value,
+                        base: 8,
+                        isMalformed: false
+                    };
+                }
+
+                // Decimal numbers that start with '0' such as '09' are illegal
+                // but we still parse them and return as malformed.
+
+                if (isDecimalDigit(char)) {
+                    index += 1;
+                    value += char;
+                }
+            }
+
+            while (index < length) {
+                char = this.peek(index);
+                if (!isDecimalDigit(char)) {
+                    break;
+                }
+                value += char;
+                index += 1;
+            }
+        }
+
+        // Decimal digits.
+
+        if (char === ".") {
+            value += char;
+            index += 1;
+
+            while (index < length) {
+                char = this.peek(index);
+                if (!isDecimalDigit(char)) {
+                    break;
+                }
+                value += char;
+                index += 1;
+            }
+        }
+
+        // Exponent part.
+
+        if (char === "e" || char === "E") {
+            value += char;
+            index += 1;
+            char = this.peek(index);
+
+            if (char === "+" || char === "-") {
+                value += this.peek(index);
+                index += 1;
+            }
+
+            char = this.peek(index);
+            if (isDecimalDigit(char)) {
+                value += char;
+                index += 1;
+
+                while (index < length) {
+                    char = this.peek(index);
+                    if (!isDecimalDigit(char)) {
+                        break;
+                    }
+                    value += char;
+                    index += 1;
+                }
+            } else {
+                return null;
+            }
+        }
+
+        if (index < length) {
+            char = this.peek(index);
+            if (isIdentifierStart(char)) {
+                return null;
+            }
+        }
+
+        return {
+            type: Token.NumericLiteral,
+            value: value,
+            base: 10,
+            isMalformed: !isFinite(value)
+        };
+    },
+
+    /*
+     * Extract a string out of the next sequence of characters and/or
+     * lines or return 'null' if its not possible. Since strings can
+     * span across multiple lines this method has to move the char
+     * pointer.
+     *
+     * This method recognizes pseudo-multiline JavaScript strings:
+     *
+     *   var str = "hello\
+     *   world";
+     */
+    scanStringLiteral: function (checks) {
+        /*jshint loopfunc:true */
+        var quote = this.peek();
+
+        // String must start with a quote.
+        if (quote !== "\"" && quote !== "'") {
+            return null;
+        }
+
+        // In JSON strings must always use double quotes.
+        this.triggerAsync("warning", {
+            code: "W108",
+            line: this.line,
+            character: this.char // +1?
+        }, checks, function () { return state.jsonMode && quote !== "\""; });
+
+        var value = "";
+        var startLine = this.line;
+        var startChar = this.char;
+        var allowNewLine = false;
+
+        this.skip();
+
+        while (this.peek() !== quote) {
+            while (this.peek() === "") { // End Of Line
+
+                // If an EOL is not preceded by a backslash, show a warning
+                // and proceed like it was a legit multi-line string where
+                // author simply forgot to escape the newline symbol.
+                //
+                // Another approach is to implicitly close a string on EOL
+                // but it generates too many false positives.
+
+                if (!allowNewLine) {
+                    this.trigger("warning", {
+                        code: "W112",
+                        line: this.line,
+                        character: this.char
+                    });
+                } else {
+                    allowNewLine = false;
+
+                    // Otherwise show a warning if multistr option was not set.
+                    // For JSON, show warning no matter what.
+
+                    this.triggerAsync("warning", {
+                        code: "W043",
+                        line: this.line,
+                        character: this.char
+                    }, checks, function () { return !state.option.multistr; });
+
+                    this.triggerAsync("warning", {
+                        code: "W042",
+                        line: this.line,
+                        character: this.char
+                    }, checks, function () { return state.jsonMode && state.option.multistr; });
+                }
+
+                // If we get an EOF inside of an unclosed string, show an
+                // error and implicitly close it at the EOF point.
+
+                if (!this.nextLine()) {
+                    this.trigger("error", {
+                        code: "E029",
+                        line: startLine,
+                        character: startChar
+                    });
+
+                    return {
+                        type: Token.StringLiteral,
+                        value: value,
+                        isUnclosed: true,
+                        quote: quote
+                    };
+                }
+            }
+
+            allowNewLine = false;
+            var char = this.peek();
+            var jump = 1; // A length of a jump, after we're done
+                          // parsing this character.
+
+            if (char < " ") {
+                // Warn about a control character in a string.
+                this.trigger("warning", {
+                    code: "W113",
+                    line: this.line,
+                    character: this.char,
+                    data: [ "<non-printable>" ]
+                });
+            }
+
+            // Special treatment for some escaped characters.
+
+            if (char === "\\") {
+                this.skip();
+                char = this.peek();
+
+                switch (char) {
+                case "'":
+                    this.triggerAsync("warning", {
+                        code: "W114",
+                        line: this.line,
+                        character: this.char,
+                        data: [ "\\'" ]
+                    }, checks, function () {return state.jsonMode; });
+                    break;
+                case "b":
+                    char = "\b";
+                    break;
+                case "f":
+                    char = "\f";
+                    break;
+                case "n":
+                    char = "\n";
+                    break;
+                case "r":
+                    char = "\r";
+                    break;
+                case "t":
+                    char = "\t";
+                    break;
+                case "0":
+                    char = "\0";
+
+                    // Octal literals fail in strict mode.
+                    // Check if the number is between 00 and 07.
+                    var n = parseInt(this.peek(1), 10);
+                    this.triggerAsync("warning", {
+                        code: "W115",
+                        line: this.line,
+                        character: this.char
+                    }, checks,
+                    function () { return n >= 0 && n <= 7 && state.directive["use strict"]; });
+                    break;
+                case "u":
+                    char = String.fromCharCode(parseInt(this.input.substr(1, 4), 16));
+                    jump = 5;
+                    break;
+                case "v":
+                    this.triggerAsync("warning", {
+                        code: "W114",
+                        line: this.line,
+                        character: this.char,
+                        data: [ "\\v" ]
+                    }, checks, function () { return state.jsonMode; });
+
+                    char = "\v";
+                    break;
+                case "x":
+                    var x = parseInt(this.input.substr(1, 2), 16);
+
+                    this.triggerAsync("warning", {
+                        code: "W114",
+                        line: this.line,
+                        character: this.char,
+                        data: [ "\\x-" ]
+                    }, checks, function () { return state.jsonMode; });
+
+                    char = String.fromCharCode(x);
+                    jump = 3;
+                    break;
+                case "\\":
+                case "\"":
+                case "/":
+                    break;
+                case "":
+                    allowNewLine = true;
+                    char = "";
+                    break;
+                case "!":
+                    if (value.slice(value.length - 2) === "<") {
+                        break;
+                    }
+
+                    /*falls through */
+                default:
+                    // Weird escaping.
+                    this.trigger("warning", {
+                        code: "W044",
+                        line: this.line,
+                        character: this.char
+                    });
+                }
+            }
+
+            value += char;
+            this.skip(jump);
+        }
+
+        this.skip();
+        return {
+            type: Token.StringLiteral,
+            value: value,
+            isUnclosed: false,
+            quote: quote
+        };
+    },
+
+    /*
+     * Extract a regular expression out of the next sequence of
+     * characters and/or lines or return 'null' if its not possible.
+     *
+     * This method is platform dependent: it accepts almost any
+     * regular expression values but then tries to compile and run
+     * them using system's RegExp object. This means that there are
+     * rare edge cases where one JavaScript engine complains about
+     * your regular expression while others don't.
+     */
+    scanRegExp: function () {
+        var index = 0;
+        var length = this.input.length;
+        var char = this.peek();
+        var value = char;
+        var body = "";
+        var flags = [];
+        var malformed = false;
+        var isCharSet = false;
+        var terminated;
+
+        var scanUnexpectedChars = function () {
+            // Unexpected control character
+            if (char < " ") {
+                malformed = true;
+                this.trigger("warning", {
+                    code: "W048",
+                    line: this.line,
+                    character: this.char
+                });
+            }
+
+            // Unexpected escaped character
+            if (char === "<") {
+                malformed = true;
+                this.trigger("warning", {
+                    code: "W049",
+                    line: this.line,
+                    character: this.char,
+                    data: [ char ]
+                });
+            }
+        }.bind(this);
+
+        // Regular expressions must start with '/'
+        if (!this.prereg || char !== "/") {
+            return null;
+        }
+
+        index += 1;
+        terminated = false;
+
+        // Try to get everything in between slashes. A couple of
+        // cases aside (see scanUnexpectedChars) we don't really
+        // care whether the resulting expression is valid or not.
+        // We will check that later using the RegExp object.
+
+        while (index < length) {
+            char = this.peek(index);
+            value += char;
+            body += char;
+
+            if (isCharSet) {
+                if (char === "]") {
+                    if (this.peek(index - 1) !== "\\" || this.peek(index - 2) === "\\") {
+                        isCharSet = false;
+                    }
+                }
+
+                if (char === "\\") {
+                    index += 1;
+                    char = this.peek(index);
+                    body += char;
+                    value += char;
+
+                    scanUnexpectedChars();
+                }
+
+                index += 1;
+                continue;
+            }
+
+            if (char === "\\") {
+                index += 1;
+                char = this.peek(index);
+                body += char;
+                value += char;
+
+                scanUnexpectedChars();
+
+                if (char === "/") {
+                    index += 1;
+                    continue;
+                }
+
+                if (char === "[") {
+                    index += 1;
+                    continue;
+                }
+            }
+
+            if (char === "[") {
+                isCharSet = true;
+                index += 1;
+                continue;
+            }
+
+            if (char === "/") {
+                body = body.substr(0, body.length - 1);
+                terminated = true;
+                index += 1;
+                break;
+            }
+
+            index += 1;
+        }
+
+        // A regular expression that was never closed is an
+        // error from which we cannot recover.
+
+        if (!terminated) {
+            this.trigger("error", {
+                code: "E015",
+                line: this.line,
+                character: this.from
+            });
+
+            return void this.trigger("fatal", {
+                line: this.line,
+                from: this.from
+            });
+        }
+
+        // Parse flags (if any).
+
+        while (index < length) {
+            char = this.peek(index);
+            if (!/[gim]/.test(char)) {
+                break;
+            }
+            flags.push(char);
+            value += char;
+            index += 1;
+        }
+
+        // Check regular expression for correctness.
+
+        try {
+            new RegExp(body, flags.join(""));
+        } catch (err) {
+            malformed = true;
+            this.trigger("error", {
+                code: "E016",
+                line: this.line,
+                character: this.char,
+                data: [ err.message ] // Platform dependent!
+            });
+        }
+
+        return {
+            type: Token.RegExp,
+            value: value,
+            flags: flags,
+            isMalformed: malformed
+        };
+    },
+
+    /*
+     * Scan for any occurence of mixed tabs and spaces. If smarttabs option
+     * is on, ignore tabs followed by spaces.
+     *
+     * Tabs followed by one space followed by a block comment are allowed.
+     */
+    scanMixedSpacesAndTabs: function () {
+        var at, match;
+
+        if (state.option.smarttabs) {
+            // Negative look-behind for "//"
+            match = this.input.match(/(\/\/|^\s?\*)? \t/);
+            at = match && !match[1] ? 0 : -1;
+        } else {
+            at = this.input.search(/ \t|\t [^\*]/);
+        }
+
+        return at;
+    },
+
+    /*
+     * Scan for characters that get silently deleted by one or more browsers.
+     */
+    scanUnsafeChars: function () {
+        return this.input.search(reg.unsafeChars);
+    },
+
+    /*
+     * Produce the next raw token or return 'null' if no tokens can be matched.
+     * This method skips over all space characters.
+     */
+    next: function (checks) {
+        this.from = this.char;
+
+        // Move to the next non-space character.
+        var start;
+        if (/\s/.test(this.peek())) {
+            start = this.char;
+
+            while (/\s/.test(this.peek())) {
+                this.from += 1;
+                this.skip();
+            }
+
+            if (this.peek() === "") { // EOL
+                if (!/^\s*$/.test(this.lines[this.line - 1]) && state.option.trailing) {
+                    this.trigger("warning", { code: "W102", line: this.line, character: start });
+                }
+            }
+        }
+
+        // Methods that work with multi-line structures and move the
+        // character pointer.
+
+        var match = this.scanComments() ||
+            this.scanStringLiteral(checks);
+
+        if (match) {
+            return match;
+        }
+
+        // Methods that don't move the character pointer.
+
+        match =
+            this.scanRegExp() ||
+            this.scanPunctuator() ||
+            this.scanKeyword() ||
+            this.scanIdentifier() ||
+            this.scanNumericLiteral();
+
+        if (match) {
+            this.skip(match.value.length);
+            return match;
+        }
+
+        // No token could be matched, give up.
+
+        return null;
+    },
+
+    /*
+     * Switch to the next line and reset all char pointers. Once
+     * switched, this method also checks for mixed spaces and tabs
+     * and other minor warnings.
+     */
+    nextLine: function () {
+        var char;
+
+        if (this.line >= this.lines.length) {
+            return false;
+        }
+
+        this.input = this.lines[this.line];
+        this.line += 1;
+        this.char = 1;
+        this.from = 1;
+
+        char = this.scanMixedSpacesAndTabs();
+        if (char >= 0) {
+            this.trigger("warning", { code: "W099", line: this.line, character: char + 1 });
+        }
+
+        this.input = this.input.replace(/\t/g, state.tab);
+        char = this.scanUnsafeChars();
+
+        if (char >= 0) {
+            this.trigger("warning", { code: "W100", line: this.line, character: char });
+        }
+
+        // If there is a limit on line length, warn when lines get too
+        // long.
+
+        if (state.option.maxlen && state.option.maxlen < this.input.length) {
+            this.trigger("warning", { code: "W101", line: this.line, character: this.input.length });
+        }
+
+        return true;
+    },
+
+    /*
+     * This is simply a synonym for nextLine() method with a friendlier
+     * public name.
+     */
+    start: function () {
+        this.nextLine();
+    },
+
+    /*
+     * Produce the next token. This function is called by advance() to get
+     * the next token. It retuns a token in a JSLint-compatible format.
+     */
+    token: function () {
+        /*jshint loopfunc:true */
+        var checks = asyncTrigger();
+        var token;
+
+
+        function isReserved(token, isProperty) {
+            if (!token.reserved) {
+                return false;
+            }
+
+            if (token.meta && token.meta.isFutureReservedWord) {
+                // ES3 FutureReservedWord in an ES5 environment.
+                if (state.option.inES5(true) && !token.meta.es5) {
+                    return false;
+                }
+
+                // Some ES5 FutureReservedWord identifiers are active only
+                // within a strict mode environment.
+                if (token.meta.strictOnly) {
+                    if (!state.option.strict && !state.directive["use strict"]) {
+                        return false;
+                    }
+                }
+
+                if (isProperty) {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        // Produce a token object.
+        var create = function (type, value, isProperty) {
+            /*jshint validthis:true */
+            var obj;
+
+            if (type !== "(endline)" && type !== "(end)") {
+                this.prereg = false;
+            }
+
+            if (type === "(punctuator)") {
+                switch (value) {
+                case ".":
+                case ")":
+                case "~":
+                case "#":
+                case "]":
+                    this.prereg = false;
+                    break;
+                default:
+                    this.prereg = true;
+                }
+
+                obj = Object.create(state.syntax[value] || state.syntax["(error)"]);
+            }
+
+            if (type === "(identifier)") {
+                if (value === "return" || value === "case" || value === "typeof") {
+                    this.prereg = true;
+                }
+
+                if (_.has(state.syntax, value)) {
+                    obj = Object.create(state.syntax[value] || state.syntax["(error)"]);
+
+                    // If this can't be a reserved keyword, reset the object.
+                    if (!isReserved(obj, isProperty && type === "(identifier)")) {
+                        obj = null;
+                    }
+                }
+            }
+
+            if (!obj) {
+                obj = Object.create(state.syntax[type]);
+            }
+
+            obj.identifier = (type === "(identifier)");
+            obj.type = obj.type || type;
+            obj.value = value;
+            obj.line = this.line;
+            obj.character = this.char;
+            obj.from = this.from;
+
+            if (isProperty && obj.identifier) {
+                obj.isProperty = isProperty;
+            }
+
+            obj.check = checks.check;
+
+            return obj;
+        }.bind(this);
+
+        for (;;) {
+            if (!this.input.length) {
+                return create(this.nextLine() ? "(endline)" : "(end)", "");
+            }
+
+            token = this.next(checks);
+
+            if (!token) {
+                if (this.input.length) {
+                    // Unexpected character.
+                    this.trigger("error", {
+                        code: "E024",
+                        line: this.line,
+                        character: this.char,
+                        data: [ this.peek() ]
+                    });
+
+                    this.input = "";
+                }
+
+                continue;
+            }
+
+            switch (token.type) {
+            case Token.StringLiteral:
+                this.triggerAsync("String", {
+                    line: this.line,
+                    char: this.char,
+                    from: this.from,
+                    value: token.value,
+                    quote: token.quote
+                }, checks, function () { return true; });
+
+                return create("(string)", token.value);
+            case Token.Identifier:
+                this.trigger("Identifier", {
+                    line: this.line,
+                    char: this.char,
+                    from: this.form,
+                    name: token.value,
+                    isProperty: state.tokens.curr.id === "."
+                });
+
+                /* falls through */
+            case Token.Keyword:
+            case Token.NullLiteral:
+            case Token.BooleanLiteral:
+                return create("(identifier)", token.value, state.tokens.curr.id === ".");
+
+            case Token.NumericLiteral:
+                if (token.isMalformed) {
+                    this.trigger("warning", {
+                        code: "W045",
+                        line: this.line,
+                        character: this.char,
+                        data: [ token.value ]
+                    });
+                }
+
+                this.triggerAsync("warning", {
+                    code: "W114",
+                    line: this.line,
+                    character: this.char,
+                    data: [ "0x-" ]
+                }, checks, function () { return token.base === 16 && state.jsonMode; });
+
+                this.triggerAsync("warning", {
+                    code: "W115",
+                    line: this.line,
+                    character: this.char
+                }, checks, function () {
+                    return state.directive["use strict"] && token.base === 8;
+                });
+
+                this.trigger("Number", {
+                    line: this.line,
+                    char: this.char,
+                    from: this.from,
+                    value: token.value,
+                    base: token.base,
+                    isMalformed: token.malformed
+                });
+
+                return create("(number)", token.value);
+
+            case Token.RegExp:
+                return create("(regexp)", token.value);
+
+            case Token.Comment:
+                state.tokens.curr.comment = true;
+
+                if (token.isSpecial) {
+                    return {
+                        value: token.value,
+                        body: token.body,
+                        type: token.commentType,
+                        isSpecial: token.isSpecial,
+                        line: this.line,
+                        character: this.char,
+                        from: this.from
+                    };
+                }
+
+                break;
+
+            case "":
+                break;
+
+            default:
+                return create("(punctuator)", token.value);
+            }
+        }
     }
 };
 
-exports.state = state;
+exports.Lexer = Lexer;
 
-},{}],"jshint":[function(require,module,exports){
+})()
+},{"events":2,"./reg.js":6,"./state.js":4,"underscore":11}],"jshint":[function(require,module,exports){
 module.exports=require('E/GbHF');
 },{}],"E/GbHF":[function(require,module,exports){
 (function(){/*!
@@ -1061,8 +2759,6 @@ module.exports=require('E/GbHF');
  */
 
 /*jshint quotmark:double */
-/*global console:true */
-/*exported console */
 
 var _        = require("underscore");
 var events   = require("events");
@@ -3083,7 +4779,7 @@ var JSHINT = (function () {
             }
         }
         return that;
-    }, 5);
+    }, 5, true);
     infix("?", function (left, that) {
         that.left = left;
         that.right = expression(10);
@@ -5673,7 +7369,895 @@ if (typeof exports === "object" && exports) {
 }
 
 })()
-},{"events":2,"../shared/vars.js":3,"../shared/messages.js":7,"./lex.js":8,"./reg.js":4,"./style.js":5,"./state.js":6,"underscore":9}],9:[function(require,module,exports){
+},{"events":2,"../shared/vars.js":3,"./lex.js":10,"./reg.js":6,"./state.js":4,"../shared/messages.js":12,"./style.js":5,"console-browserify":7,"underscore":11}],12:[function(require,module,exports){
+(function(){"use strict";
+
+var _ = require("underscore");
+
+var errors = {
+    // JSHint options
+    E001: "Bad option: '{a}'.",
+    E002: "Bad option value.",
+
+    // JSHint input
+    E003: "Expected a JSON value.",
+    E004: "Input is neither a string nor an array of strings.",
+    E005: "Input is empty.",
+    E006: "Unexpected early end of program.",
+
+    // Strict mode
+    E007: "Missing \"use strict\" statement.",
+    E008: "Strict violation.",
+    E009: "Option 'validthis' can't be used in a global scope.",
+    E010: "'with' is not allowed in strict mode.",
+
+    // Constants
+    E011: "const '{a}' has already been declared.",
+    E012: "const '{a}' is initialized to 'undefined'.",
+    E013: "Attempting to override '{a}' which is a constant.",
+
+    // Regular expressions
+    E014: "A regular expression literal can be confused with '/='.",
+    E015: "Unclosed regular expression.",
+    E016: "Invalid regular expression.",
+
+    // Tokens
+    E017: "Unclosed comment.",
+    E018: "Unbegun comment.",
+    E019: "Unmatched '{a}'.",
+    E020: "Expected '{a}' to match '{b}' from line {c} and instead saw '{d}'.",
+    E021: "Expected '{a}' and instead saw '{b}'.",
+    E022: "Line breaking error '{a}'.",
+    E023: "Missing '{a}'.",
+    E024: "Unexpected '{a}'.",
+    E025: "Missing ':' on a case clause.",
+    E026: "Missing '}' to match '{' from line {a}.",
+    E027: "Missing ']' to match '[' form line {a}.",
+    E028: "Illegal comma.",
+    E029: "Unclosed string.",
+
+    // Everything else
+    E030: "Expected an identifier and instead saw '{a}'.",
+    E031: "Bad assignment.", // FIXME: Rephrase
+    E032: "Expected a small integer or 'false' and instead saw '{a}'.",
+    E033: "Expected an operator and instead saw '{a}'.",
+    E034: "get/set are ES5 features.",
+    E035: "Missing property name.",
+    E036: "Expected to see a statement and instead saw a block.",
+    E037: "Constant {a} was not declared correctly.",
+    E038: "Variable {a} was not declared correctly.",
+    E039: "Function declarations are not invocable. Wrap the whole function invocation in parens.",
+    E040: "Each value should have its own case label.",
+    E041: "Unrecoverable syntax error.",
+    E042: "Stopping.",
+    E043: "Too many errors.",
+    E044: "'{a}' is already defined and can't be redefined.",
+    E045: "Invalid for each loop.",
+    E046: "A yield statement shall be within a generator function (with syntax: `function*`)",
+    E047: "A generator function shall contain a yield statement.",
+    E048: "Let declaration not directly within block.",
+    E049: "A {a} cannot be named '{b}'."
+};
+
+var warnings = {
+    W001: "'hasOwnProperty' is a really bad name.",
+    W002: "Value of '{a}' may be overwritten in IE.",
+    W003: "'{a}' was used before it was defined.",
+    W004: "'{a}' is already defined.",
+    W005: "A dot following a number can be confused with a decimal point.",
+    W006: "Confusing minuses.",
+    W007: "Confusing pluses.",
+    W008: "A leading decimal point can be confused with a dot: '{a}'.",
+    W009: "The array literal notation [] is preferrable.",
+    W010: "The object literal notation {} is preferrable.",
+    W011: "Unexpected space after '{a}'.",
+    W012: "Unexpected space before '{a}'.",
+    W013: "Missing space after '{a}'.",
+    W014: "Bad line breaking before '{a}'.",
+    W015: "Expected '{a}' to have an indentation at {b} instead at {c}.",
+    W016: "Unexpected use of '{a}'.",
+    W017: "Bad operand.",
+    W018: "Confusing use of '{a}'.",
+    W019: "Use the isNaN function to compare with NaN.",
+    W020: "Read only.",
+    W021: "'{a}' is a function.",
+    W022: "Do not assign to the exception parameter.",
+    W023: "Expected an identifier in an assignment and instead saw a function invocation.",
+    W024: "Expected an identifier and instead saw '{a}' (a reserved word).",
+    W025: "Missing name in function declaration.",
+    W026: "Inner functions should be listed at the top of the outer function.",
+    W027: "Unreachable '{a}' after '{b}'.",
+    W028: "Label '{a}' on {b} statement.",
+    W030: "Expected an assignment or function call and instead saw an expression.",
+    W031: "Do not use 'new' for side effects.",
+    W032: "Unnecessary semicolon.",
+    W033: "Missing semicolon.",
+    W034: "Unnecessary directive \"{a}\".",
+    W035: "Empty block.",
+    W036: "Unexpected /*member '{a}'.",
+    W037: "'{a}' is a statement label.",
+    W038: "'{a}' used out of scope.",
+    W039: "'{a}' is not allowed.",
+    W040: "Possible strict violation.",
+    W041: "Use '{a}' to compare with '{b}'.",
+    W042: "Avoid EOL escaping.",
+    W043: "Bad escaping of EOL. Use option multistr if needed.",
+    W044: "Bad or unnecessary escaping.",
+    W045: "Bad number '{a}'.",
+    W046: "Don't use extra leading zeros '{a}'.",
+    W047: "A trailing decimal point can be confused with a dot: '{a}'.",
+    W048: "Unexpected control character in regular expression.",
+    W049: "Unexpected escaped character '{a}' in regular expression.",
+    W050: "JavaScript URL.",
+    W051: "Variables should not be deleted.",
+    W052: "Unexpected '{a}'.",
+    W053: "Do not use {a} as a constructor.",
+    W054: "The Function constructor is a form of eval.",
+    W055: "A constructor name should start with an uppercase letter.",
+    W056: "Bad constructor.",
+    W057: "Weird construction. Is 'new' unnecessary?",
+    W058: "Missing '()' invoking a constructor.",
+    W059: "Avoid arguments.{a}.",
+    W060: "document.write can be a form of eval.",
+    W061: "eval can be harmful.",
+    W062: "Wrap an immediate function invocation in parens " +
+        "to assist the reader in understanding that the expression " +
+        "is the result of a function, and not the function itself.",
+    W063: "Math is not a function.",
+    W064: "Missing 'new' prefix when invoking a constructor.",
+    W065: "Missing radix parameter.",
+    W066: "Implied eval. Consider passing a function instead of a string.",
+    W067: "Bad invocation.",
+    W068: "Wrapping non-IIFE function literals in parens is unnecessary.",
+    W069: "['{a}'] is better written in dot notation.",
+    W070: "Extra comma. (it breaks older versions of IE)",
+    W071: "This function has too many statements. ({a})",
+    W072: "This function has too many parameters. ({a})",
+    W073: "Blocks are nested too deeply. ({a})",
+    W074: "This function's cyclomatic complexity is too high. ({a})",
+    W075: "Duplicate key '{a}'.",
+    W076: "Unexpected parameter '{a}' in get {b} function.",
+    W077: "Expected a single parameter in set {a} function.",
+    W078: "Setter is defined without getter.",
+    W079: "Redefinition of '{a}'.",
+    W080: "It's not necessary to initialize '{a}' to 'undefined'.",
+    W081: "Too many var statements.",
+    W082: "Function declarations should not be placed in blocks. " +
+        "Use a function expression or move the statement to the top of " +
+        "the outer function.",
+    W083: "Don't make functions within a loop.",
+    W084: "Expected a conditional expression and instead saw an assignment.",
+    W085: "Don't use 'with'.",
+    W086: "Expected a 'break' statement before '{a}'.",
+    W087: "Forgotten 'debugger' statement?",
+    W088: "Creating global 'for' variable. Should be 'for (var {a} ...'.",
+    W089: "The body of a for in should be wrapped in an if statement to filter " +
+        "unwanted properties from the prototype.",
+    W090: "'{a}' is not a statement label.",
+    W091: "'{a}' is out of scope.",
+    W092: "Wrap the /regexp/ literal in parens to disambiguate the slash operator.",
+    W093: "Did you mean to return a conditional instead of an assignment?",
+    W094: "Unexpected comma.",
+    W095: "Expected a string and instead saw {a}.",
+    W096: "The '{a}' key may produce unexpected results.",
+    W097: "Use the function form of \"use strict\".",
+    W098: "'{a}' is defined but never used.",
+    W099: "Mixed spaces and tabs.",
+    W100: "This character may get silently deleted by one or more browsers.",
+    W101: "Line is too long.",
+    W102: "Trailing whitespace.",
+    W103: "The '{a}' property is deprecated.",
+    W104: "'{a}' is only available in JavaScript 1.7.",
+    W105: "Unexpected {a} in '{b}'.",
+    W106: "Identifier '{a}' is not in camel case.",
+    W107: "Script URL.",
+    W108: "Strings must use doublequote.",
+    W109: "Strings must use singlequote.",
+    W110: "Mixed double and single quotes.",
+    W112: "Unclosed string.",
+    W113: "Control character in string: {a}.",
+    W114: "Avoid {a}.",
+    W115: "Octal literals are not allowed in strict mode.",
+    W116: "Expected '{a}' and instead saw '{b}'.",
+    W117: "'{a}' is not defined.",
+    W118: "'{a}' is only available in Mozilla JavaScript extensions (use moz option).",
+    W119: "'{a}' is only available in ES6 (use esnext option)."
+};
+
+var info = {
+    I001: "Comma warnings can be turned off with 'laxcomma'.",
+    I002: "Reserved words as properties can be used under the 'es5' option.",
+    I003: "ES5 option is now set per default"
+};
+
+exports.errors = {};
+exports.warnings = {};
+exports.info = {};
+
+_.each(errors, function (desc, code) {
+    exports.errors[code] = { code: code, desc: desc };
+});
+
+_.each(warnings, function (desc, code) {
+    exports.warnings[code] = { code: code, desc: desc };
+});
+
+_.each(info, function (desc, code) {
+    exports.info[code] = { code: code, desc: desc };
+});
+
+})()
+},{"underscore":11}],8:[function(require,module,exports){
+var events = require('events');
+
+exports.isArray = isArray;
+exports.isDate = function(obj){return Object.prototype.toString.call(obj) === '[object Date]'};
+exports.isRegExp = function(obj){return Object.prototype.toString.call(obj) === '[object RegExp]'};
+
+
+exports.print = function () {};
+exports.puts = function () {};
+exports.debug = function() {};
+
+exports.inspect = function(obj, showHidden, depth, colors) {
+  var seen = [];
+
+  var stylize = function(str, styleType) {
+    // http://en.wikipedia.org/wiki/ANSI_escape_code#graphics
+    var styles =
+        { 'bold' : [1, 22],
+          'italic' : [3, 23],
+          'underline' : [4, 24],
+          'inverse' : [7, 27],
+          'white' : [37, 39],
+          'grey' : [90, 39],
+          'black' : [30, 39],
+          'blue' : [34, 39],
+          'cyan' : [36, 39],
+          'green' : [32, 39],
+          'magenta' : [35, 39],
+          'red' : [31, 39],
+          'yellow' : [33, 39] };
+
+    var style =
+        { 'special': 'cyan',
+          'number': 'blue',
+          'boolean': 'yellow',
+          'undefined': 'grey',
+          'null': 'bold',
+          'string': 'green',
+          'date': 'magenta',
+          // "name": intentionally not styling
+          'regexp': 'red' }[styleType];
+
+    if (style) {
+      return '\033[' + styles[style][0] + 'm' + str +
+             '\033[' + styles[style][1] + 'm';
+    } else {
+      return str;
+    }
+  };
+  if (! colors) {
+    stylize = function(str, styleType) { return str; };
+  }
+
+  function format(value, recurseTimes) {
+    // Provide a hook for user-specified inspect functions.
+    // Check that value is an object with an inspect function on it
+    if (value && typeof value.inspect === 'function' &&
+        // Filter out the util module, it's inspect function is special
+        value !== exports &&
+        // Also filter out any prototype objects using the circular check.
+        !(value.constructor && value.constructor.prototype === value)) {
+      return value.inspect(recurseTimes);
+    }
+
+    // Primitive types cannot have properties
+    switch (typeof value) {
+      case 'undefined':
+        return stylize('undefined', 'undefined');
+
+      case 'string':
+        var simple = '\'' + JSON.stringify(value).replace(/^"|"$/g, '')
+                                                 .replace(/'/g, "\\'")
+                                                 .replace(/\\"/g, '"') + '\'';
+        return stylize(simple, 'string');
+
+      case 'number':
+        return stylize('' + value, 'number');
+
+      case 'boolean':
+        return stylize('' + value, 'boolean');
+    }
+    // For some reason typeof null is "object", so special case here.
+    if (value === null) {
+      return stylize('null', 'null');
+    }
+
+    // Look up the keys of the object.
+    var visible_keys = Object_keys(value);
+    var keys = showHidden ? Object_getOwnPropertyNames(value) : visible_keys;
+
+    // Functions without properties can be shortcutted.
+    if (typeof value === 'function' && keys.length === 0) {
+      if (isRegExp(value)) {
+        return stylize('' + value, 'regexp');
+      } else {
+        var name = value.name ? ': ' + value.name : '';
+        return stylize('[Function' + name + ']', 'special');
+      }
+    }
+
+    // Dates without properties can be shortcutted
+    if (isDate(value) && keys.length === 0) {
+      return stylize(value.toUTCString(), 'date');
+    }
+
+    var base, type, braces;
+    // Determine the object type
+    if (isArray(value)) {
+      type = 'Array';
+      braces = ['[', ']'];
+    } else {
+      type = 'Object';
+      braces = ['{', '}'];
+    }
+
+    // Make functions say that they are functions
+    if (typeof value === 'function') {
+      var n = value.name ? ': ' + value.name : '';
+      base = (isRegExp(value)) ? ' ' + value : ' [Function' + n + ']';
+    } else {
+      base = '';
+    }
+
+    // Make dates with properties first say the date
+    if (isDate(value)) {
+      base = ' ' + value.toUTCString();
+    }
+
+    if (keys.length === 0) {
+      return braces[0] + base + braces[1];
+    }
+
+    if (recurseTimes < 0) {
+      if (isRegExp(value)) {
+        return stylize('' + value, 'regexp');
+      } else {
+        return stylize('[Object]', 'special');
+      }
+    }
+
+    seen.push(value);
+
+    var output = keys.map(function(key) {
+      var name, str;
+      if (value.__lookupGetter__) {
+        if (value.__lookupGetter__(key)) {
+          if (value.__lookupSetter__(key)) {
+            str = stylize('[Getter/Setter]', 'special');
+          } else {
+            str = stylize('[Getter]', 'special');
+          }
+        } else {
+          if (value.__lookupSetter__(key)) {
+            str = stylize('[Setter]', 'special');
+          }
+        }
+      }
+      if (visible_keys.indexOf(key) < 0) {
+        name = '[' + key + ']';
+      }
+      if (!str) {
+        if (seen.indexOf(value[key]) < 0) {
+          if (recurseTimes === null) {
+            str = format(value[key]);
+          } else {
+            str = format(value[key], recurseTimes - 1);
+          }
+          if (str.indexOf('\n') > -1) {
+            if (isArray(value)) {
+              str = str.split('\n').map(function(line) {
+                return '  ' + line;
+              }).join('\n').substr(2);
+            } else {
+              str = '\n' + str.split('\n').map(function(line) {
+                return '   ' + line;
+              }).join('\n');
+            }
+          }
+        } else {
+          str = stylize('[Circular]', 'special');
+        }
+      }
+      if (typeof name === 'undefined') {
+        if (type === 'Array' && key.match(/^\d+$/)) {
+          return str;
+        }
+        name = JSON.stringify('' + key);
+        if (name.match(/^"([a-zA-Z_][a-zA-Z_0-9]*)"$/)) {
+          name = name.substr(1, name.length - 2);
+          name = stylize(name, 'name');
+        } else {
+          name = name.replace(/'/g, "\\'")
+                     .replace(/\\"/g, '"')
+                     .replace(/(^"|"$)/g, "'");
+          name = stylize(name, 'string');
+        }
+      }
+
+      return name + ': ' + str;
+    });
+
+    seen.pop();
+
+    var numLinesEst = 0;
+    var length = output.reduce(function(prev, cur) {
+      numLinesEst++;
+      if (cur.indexOf('\n') >= 0) numLinesEst++;
+      return prev + cur.length + 1;
+    }, 0);
+
+    if (length > 50) {
+      output = braces[0] +
+               (base === '' ? '' : base + '\n ') +
+               ' ' +
+               output.join(',\n  ') +
+               ' ' +
+               braces[1];
+
+    } else {
+      output = braces[0] + base + ' ' + output.join(', ') + ' ' + braces[1];
+    }
+
+    return output;
+  }
+  return format(obj, (typeof depth === 'undefined' ? 2 : depth));
+};
+
+
+function isArray(ar) {
+  return ar instanceof Array ||
+         Array.isArray(ar) ||
+         (ar && ar !== Object.prototype && isArray(ar.__proto__));
+}
+
+
+function isRegExp(re) {
+  return re instanceof RegExp ||
+    (typeof re === 'object' && Object.prototype.toString.call(re) === '[object RegExp]');
+}
+
+
+function isDate(d) {
+  if (d instanceof Date) return true;
+  if (typeof d !== 'object') return false;
+  var properties = Date.prototype && Object_getOwnPropertyNames(Date.prototype);
+  var proto = d.__proto__ && Object_getOwnPropertyNames(d.__proto__);
+  return JSON.stringify(proto) === JSON.stringify(properties);
+}
+
+function pad(n) {
+  return n < 10 ? '0' + n.toString(10) : n.toString(10);
+}
+
+var months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep',
+              'Oct', 'Nov', 'Dec'];
+
+// 26 Feb 16:19:34
+function timestamp() {
+  var d = new Date();
+  var time = [pad(d.getHours()),
+              pad(d.getMinutes()),
+              pad(d.getSeconds())].join(':');
+  return [d.getDate(), months[d.getMonth()], time].join(' ');
+}
+
+exports.log = function (msg) {};
+
+exports.pump = null;
+
+var Object_keys = Object.keys || function (obj) {
+    var res = [];
+    for (var key in obj) res.push(key);
+    return res;
+};
+
+var Object_getOwnPropertyNames = Object.getOwnPropertyNames || function (obj) {
+    var res = [];
+    for (var key in obj) {
+        if (Object.hasOwnProperty.call(obj, key)) res.push(key);
+    }
+    return res;
+};
+
+var Object_create = Object.create || function (prototype, properties) {
+    // from es5-shim
+    var object;
+    if (prototype === null) {
+        object = { '__proto__' : null };
+    }
+    else {
+        if (typeof prototype !== 'object') {
+            throw new TypeError(
+                'typeof prototype[' + (typeof prototype) + '] != \'object\''
+            );
+        }
+        var Type = function () {};
+        Type.prototype = prototype;
+        object = new Type();
+        object.__proto__ = prototype;
+    }
+    if (typeof properties !== 'undefined' && Object.defineProperties) {
+        Object.defineProperties(object, properties);
+    }
+    return object;
+};
+
+exports.inherits = function(ctor, superCtor) {
+  ctor.super_ = superCtor;
+  ctor.prototype = Object_create(superCtor.prototype, {
+    constructor: {
+      value: ctor,
+      enumerable: false,
+      writable: true,
+      configurable: true
+    }
+  });
+};
+
+var formatRegExp = /%[sdj%]/g;
+exports.format = function(f) {
+  if (typeof f !== 'string') {
+    var objects = [];
+    for (var i = 0; i < arguments.length; i++) {
+      objects.push(exports.inspect(arguments[i]));
+    }
+    return objects.join(' ');
+  }
+
+  var i = 1;
+  var args = arguments;
+  var len = args.length;
+  var str = String(f).replace(formatRegExp, function(x) {
+    if (x === '%%') return '%';
+    if (i >= len) return x;
+    switch (x) {
+      case '%s': return String(args[i++]);
+      case '%d': return Number(args[i++]);
+      case '%j': return JSON.stringify(args[i++]);
+      default:
+        return x;
+    }
+  });
+  for(var x = args[i]; i < len; x = args[++i]){
+    if (x === null || typeof x !== 'object') {
+      str += ' ' + x;
+    } else {
+      str += ' ' + exports.inspect(x);
+    }
+  }
+  return str;
+};
+
+},{"events":2}],9:[function(require,module,exports){
+(function(){// UTILITY
+var util = require('util');
+var Buffer = require("buffer").Buffer;
+var pSlice = Array.prototype.slice;
+
+function objectKeys(object) {
+  if (Object.keys) return Object.keys(object);
+  var result = [];
+  for (var name in object) {
+    if (Object.prototype.hasOwnProperty.call(object, name)) {
+      result.push(name);
+    }
+  }
+  return result;
+}
+
+// 1. The assert module provides functions that throw
+// AssertionError's when particular conditions are not met. The
+// assert module must conform to the following interface.
+
+var assert = module.exports = ok;
+
+// 2. The AssertionError is defined in assert.
+// new assert.AssertionError({ message: message,
+//                             actual: actual,
+//                             expected: expected })
+
+assert.AssertionError = function AssertionError(options) {
+  this.name = 'AssertionError';
+  this.message = options.message;
+  this.actual = options.actual;
+  this.expected = options.expected;
+  this.operator = options.operator;
+  var stackStartFunction = options.stackStartFunction || fail;
+
+  if (Error.captureStackTrace) {
+    Error.captureStackTrace(this, stackStartFunction);
+  }
+};
+util.inherits(assert.AssertionError, Error);
+
+function replacer(key, value) {
+  if (value === undefined) {
+    return '' + value;
+  }
+  if (typeof value === 'number' && (isNaN(value) || !isFinite(value))) {
+    return value.toString();
+  }
+  if (typeof value === 'function' || value instanceof RegExp) {
+    return value.toString();
+  }
+  return value;
+}
+
+function truncate(s, n) {
+  if (typeof s == 'string') {
+    return s.length < n ? s : s.slice(0, n);
+  } else {
+    return s;
+  }
+}
+
+assert.AssertionError.prototype.toString = function() {
+  if (this.message) {
+    return [this.name + ':', this.message].join(' ');
+  } else {
+    return [
+      this.name + ':',
+      truncate(JSON.stringify(this.actual, replacer), 128),
+      this.operator,
+      truncate(JSON.stringify(this.expected, replacer), 128)
+    ].join(' ');
+  }
+};
+
+// assert.AssertionError instanceof Error
+
+assert.AssertionError.__proto__ = Error.prototype;
+
+// At present only the three keys mentioned above are used and
+// understood by the spec. Implementations or sub modules can pass
+// other keys to the AssertionError's constructor - they will be
+// ignored.
+
+// 3. All of the following functions must throw an AssertionError
+// when a corresponding condition is not met, with a message that
+// may be undefined if not provided.  All assertion methods provide
+// both the actual and expected values to the assertion error for
+// display purposes.
+
+function fail(actual, expected, message, operator, stackStartFunction) {
+  throw new assert.AssertionError({
+    message: message,
+    actual: actual,
+    expected: expected,
+    operator: operator,
+    stackStartFunction: stackStartFunction
+  });
+}
+
+// EXTENSION! allows for well behaved errors defined elsewhere.
+assert.fail = fail;
+
+// 4. Pure assertion tests whether a value is truthy, as determined
+// by !!guard.
+// assert.ok(guard, message_opt);
+// This statement is equivalent to assert.equal(true, guard,
+// message_opt);. To test strictly for the value true, use
+// assert.strictEqual(true, guard, message_opt);.
+
+function ok(value, message) {
+  if (!!!value) fail(value, true, message, '==', assert.ok);
+}
+assert.ok = ok;
+
+// 5. The equality assertion tests shallow, coercive equality with
+// ==.
+// assert.equal(actual, expected, message_opt);
+
+assert.equal = function equal(actual, expected, message) {
+  if (actual != expected) fail(actual, expected, message, '==', assert.equal);
+};
+
+// 6. The non-equality assertion tests for whether two objects are not equal
+// with != assert.notEqual(actual, expected, message_opt);
+
+assert.notEqual = function notEqual(actual, expected, message) {
+  if (actual == expected) {
+    fail(actual, expected, message, '!=', assert.notEqual);
+  }
+};
+
+// 7. The equivalence assertion tests a deep equality relation.
+// assert.deepEqual(actual, expected, message_opt);
+
+assert.deepEqual = function deepEqual(actual, expected, message) {
+  if (!_deepEqual(actual, expected)) {
+    fail(actual, expected, message, 'deepEqual', assert.deepEqual);
+  }
+};
+
+function _deepEqual(actual, expected) {
+  // 7.1. All identical values are equivalent, as determined by ===.
+  if (actual === expected) {
+    return true;
+
+  } else if (Buffer.isBuffer(actual) && Buffer.isBuffer(expected)) {
+    if (actual.length != expected.length) return false;
+
+    for (var i = 0; i < actual.length; i++) {
+      if (actual[i] !== expected[i]) return false;
+    }
+
+    return true;
+
+  // 7.2. If the expected value is a Date object, the actual value is
+  // equivalent if it is also a Date object that refers to the same time.
+  } else if (actual instanceof Date && expected instanceof Date) {
+    return actual.getTime() === expected.getTime();
+
+  // 7.3. Other pairs that do not both pass typeof value == 'object',
+  // equivalence is determined by ==.
+  } else if (typeof actual != 'object' && typeof expected != 'object') {
+    return actual == expected;
+
+  // 7.4. For all other Object pairs, including Array objects, equivalence is
+  // determined by having the same number of owned properties (as verified
+  // with Object.prototype.hasOwnProperty.call), the same set of keys
+  // (although not necessarily the same order), equivalent values for every
+  // corresponding key, and an identical 'prototype' property. Note: this
+  // accounts for both named and indexed properties on Arrays.
+  } else {
+    return objEquiv(actual, expected);
+  }
+}
+
+function isUndefinedOrNull(value) {
+  return value === null || value === undefined;
+}
+
+function isArguments(object) {
+  return Object.prototype.toString.call(object) == '[object Arguments]';
+}
+
+function objEquiv(a, b) {
+  if (isUndefinedOrNull(a) || isUndefinedOrNull(b))
+    return false;
+  // an identical 'prototype' property.
+  if (a.prototype !== b.prototype) return false;
+  //~~~I've managed to break Object.keys through screwy arguments passing.
+  //   Converting to array solves the problem.
+  if (isArguments(a)) {
+    if (!isArguments(b)) {
+      return false;
+    }
+    a = pSlice.call(a);
+    b = pSlice.call(b);
+    return _deepEqual(a, b);
+  }
+  try {
+    var ka = objectKeys(a),
+        kb = objectKeys(b),
+        key, i;
+  } catch (e) {//happens when one is a string literal and the other isn't
+    return false;
+  }
+  // having the same number of owned properties (keys incorporates
+  // hasOwnProperty)
+  if (ka.length != kb.length)
+    return false;
+  //the same set of keys (although not necessarily the same order),
+  ka.sort();
+  kb.sort();
+  //~~~cheap key test
+  for (i = ka.length - 1; i >= 0; i--) {
+    if (ka[i] != kb[i])
+      return false;
+  }
+  //equivalent values for every corresponding key, and
+  //~~~possibly expensive deep test
+  for (i = ka.length - 1; i >= 0; i--) {
+    key = ka[i];
+    if (!_deepEqual(a[key], b[key])) return false;
+  }
+  return true;
+}
+
+// 8. The non-equivalence assertion tests for any deep inequality.
+// assert.notDeepEqual(actual, expected, message_opt);
+
+assert.notDeepEqual = function notDeepEqual(actual, expected, message) {
+  if (_deepEqual(actual, expected)) {
+    fail(actual, expected, message, 'notDeepEqual', assert.notDeepEqual);
+  }
+};
+
+// 9. The strict equality assertion tests strict equality, as determined by ===.
+// assert.strictEqual(actual, expected, message_opt);
+
+assert.strictEqual = function strictEqual(actual, expected, message) {
+  if (actual !== expected) {
+    fail(actual, expected, message, '===', assert.strictEqual);
+  }
+};
+
+// 10. The strict non-equality assertion tests for strict inequality, as
+// determined by !==.  assert.notStrictEqual(actual, expected, message_opt);
+
+assert.notStrictEqual = function notStrictEqual(actual, expected, message) {
+  if (actual === expected) {
+    fail(actual, expected, message, '!==', assert.notStrictEqual);
+  }
+};
+
+function expectedException(actual, expected) {
+  if (!actual || !expected) {
+    return false;
+  }
+
+  if (expected instanceof RegExp) {
+    return expected.test(actual);
+  } else if (actual instanceof expected) {
+    return true;
+  } else if (expected.call({}, actual) === true) {
+    return true;
+  }
+
+  return false;
+}
+
+function _throws(shouldThrow, block, expected, message) {
+  var actual;
+
+  if (typeof expected === 'string') {
+    message = expected;
+    expected = null;
+  }
+
+  try {
+    block();
+  } catch (e) {
+    actual = e;
+  }
+
+  message = (expected && expected.name ? ' (' + expected.name + ').' : '.') +
+            (message ? ' ' + message : '.');
+
+  if (shouldThrow && !actual) {
+    fail('Missing expected exception' + message);
+  }
+
+  if (!shouldThrow && expectedException(actual, expected)) {
+    fail('Got unwanted exception' + message);
+  }
+
+  if ((shouldThrow && actual && expected &&
+      !expectedException(actual, expected)) || (!shouldThrow && actual)) {
+    throw actual;
+  }
+}
+
+// 11. Expected to throw an error:
+// assert.throws(block, Error_opt, message_opt);
+
+assert.throws = function(block, /*optional*/error, /*optional*/message) {
+  _throws.apply(this, [true].concat(pSlice.call(arguments)));
+};
+
+// EXTENSION! This is annoying to write outside this module.
+assert.doesNotThrow = function(block, /*optional*/error, /*optional*/message) {
+  _throws.apply(this, [false].concat(pSlice.call(arguments)));
+};
+
+assert.ifError = function(err) { if (err) {throw err;}};
+
+})()
+},{"util":8,"buffer":13}],11:[function(require,module,exports){
 (function(){//     Underscore.js 1.4.4
 //     http://underscorejs.org
 //     (c) 2009-2013 Jeremy Ashkenas, DocumentCloud Inc.
@@ -6902,2560 +9486,7 @@ if (typeof exports === "object" && exports) {
 }).call(this);
 
 })()
-},{}],10:[function(require,module,exports){
-(function(global){/*global window, global*/
-})(window)
-},{}],11:[function(require,module,exports){
-var events = require('events');
-
-exports.isArray = isArray;
-exports.isDate = function(obj){return Object.prototype.toString.call(obj) === '[object Date]'};
-exports.isRegExp = function(obj){return Object.prototype.toString.call(obj) === '[object RegExp]'};
-
-
-exports.print = function () {};
-exports.puts = function () {};
-exports.debug = function() {};
-
-exports.inspect = function(obj, showHidden, depth, colors) {
-  var seen = [];
-
-  var stylize = function(str, styleType) {
-    // http://en.wikipedia.org/wiki/ANSI_escape_code#graphics
-    var styles =
-        { 'bold' : [1, 22],
-          'italic' : [3, 23],
-          'underline' : [4, 24],
-          'inverse' : [7, 27],
-          'white' : [37, 39],
-          'grey' : [90, 39],
-          'black' : [30, 39],
-          'blue' : [34, 39],
-          'cyan' : [36, 39],
-          'green' : [32, 39],
-          'magenta' : [35, 39],
-          'red' : [31, 39],
-          'yellow' : [33, 39] };
-
-    var style =
-        { 'special': 'cyan',
-          'number': 'blue',
-          'boolean': 'yellow',
-          'undefined': 'grey',
-          'null': 'bold',
-          'string': 'green',
-          'date': 'magenta',
-          // "name": intentionally not styling
-          'regexp': 'red' }[styleType];
-
-    if (style) {
-      return '\033[' + styles[style][0] + 'm' + str +
-             '\033[' + styles[style][1] + 'm';
-    } else {
-      return str;
-    }
-  };
-  if (! colors) {
-    stylize = function(str, styleType) { return str; };
-  }
-
-  function format(value, recurseTimes) {
-    // Provide a hook for user-specified inspect functions.
-    // Check that value is an object with an inspect function on it
-    if (value && typeof value.inspect === 'function' &&
-        // Filter out the util module, it's inspect function is special
-        value !== exports &&
-        // Also filter out any prototype objects using the circular check.
-        !(value.constructor && value.constructor.prototype === value)) {
-      return value.inspect(recurseTimes);
-    }
-
-    // Primitive types cannot have properties
-    switch (typeof value) {
-      case 'undefined':
-        return stylize('undefined', 'undefined');
-
-      case 'string':
-        var simple = '\'' + JSON.stringify(value).replace(/^"|"$/g, '')
-                                                 .replace(/'/g, "\\'")
-                                                 .replace(/\\"/g, '"') + '\'';
-        return stylize(simple, 'string');
-
-      case 'number':
-        return stylize('' + value, 'number');
-
-      case 'boolean':
-        return stylize('' + value, 'boolean');
-    }
-    // For some reason typeof null is "object", so special case here.
-    if (value === null) {
-      return stylize('null', 'null');
-    }
-
-    // Look up the keys of the object.
-    var visible_keys = Object_keys(value);
-    var keys = showHidden ? Object_getOwnPropertyNames(value) : visible_keys;
-
-    // Functions without properties can be shortcutted.
-    if (typeof value === 'function' && keys.length === 0) {
-      if (isRegExp(value)) {
-        return stylize('' + value, 'regexp');
-      } else {
-        var name = value.name ? ': ' + value.name : '';
-        return stylize('[Function' + name + ']', 'special');
-      }
-    }
-
-    // Dates without properties can be shortcutted
-    if (isDate(value) && keys.length === 0) {
-      return stylize(value.toUTCString(), 'date');
-    }
-
-    var base, type, braces;
-    // Determine the object type
-    if (isArray(value)) {
-      type = 'Array';
-      braces = ['[', ']'];
-    } else {
-      type = 'Object';
-      braces = ['{', '}'];
-    }
-
-    // Make functions say that they are functions
-    if (typeof value === 'function') {
-      var n = value.name ? ': ' + value.name : '';
-      base = (isRegExp(value)) ? ' ' + value : ' [Function' + n + ']';
-    } else {
-      base = '';
-    }
-
-    // Make dates with properties first say the date
-    if (isDate(value)) {
-      base = ' ' + value.toUTCString();
-    }
-
-    if (keys.length === 0) {
-      return braces[0] + base + braces[1];
-    }
-
-    if (recurseTimes < 0) {
-      if (isRegExp(value)) {
-        return stylize('' + value, 'regexp');
-      } else {
-        return stylize('[Object]', 'special');
-      }
-    }
-
-    seen.push(value);
-
-    var output = keys.map(function(key) {
-      var name, str;
-      if (value.__lookupGetter__) {
-        if (value.__lookupGetter__(key)) {
-          if (value.__lookupSetter__(key)) {
-            str = stylize('[Getter/Setter]', 'special');
-          } else {
-            str = stylize('[Getter]', 'special');
-          }
-        } else {
-          if (value.__lookupSetter__(key)) {
-            str = stylize('[Setter]', 'special');
-          }
-        }
-      }
-      if (visible_keys.indexOf(key) < 0) {
-        name = '[' + key + ']';
-      }
-      if (!str) {
-        if (seen.indexOf(value[key]) < 0) {
-          if (recurseTimes === null) {
-            str = format(value[key]);
-          } else {
-            str = format(value[key], recurseTimes - 1);
-          }
-          if (str.indexOf('\n') > -1) {
-            if (isArray(value)) {
-              str = str.split('\n').map(function(line) {
-                return '  ' + line;
-              }).join('\n').substr(2);
-            } else {
-              str = '\n' + str.split('\n').map(function(line) {
-                return '   ' + line;
-              }).join('\n');
-            }
-          }
-        } else {
-          str = stylize('[Circular]', 'special');
-        }
-      }
-      if (typeof name === 'undefined') {
-        if (type === 'Array' && key.match(/^\d+$/)) {
-          return str;
-        }
-        name = JSON.stringify('' + key);
-        if (name.match(/^"([a-zA-Z_][a-zA-Z_0-9]*)"$/)) {
-          name = name.substr(1, name.length - 2);
-          name = stylize(name, 'name');
-        } else {
-          name = name.replace(/'/g, "\\'")
-                     .replace(/\\"/g, '"')
-                     .replace(/(^"|"$)/g, "'");
-          name = stylize(name, 'string');
-        }
-      }
-
-      return name + ': ' + str;
-    });
-
-    seen.pop();
-
-    var numLinesEst = 0;
-    var length = output.reduce(function(prev, cur) {
-      numLinesEst++;
-      if (cur.indexOf('\n') >= 0) numLinesEst++;
-      return prev + cur.length + 1;
-    }, 0);
-
-    if (length > 50) {
-      output = braces[0] +
-               (base === '' ? '' : base + '\n ') +
-               ' ' +
-               output.join(',\n  ') +
-               ' ' +
-               braces[1];
-
-    } else {
-      output = braces[0] + base + ' ' + output.join(', ') + ' ' + braces[1];
-    }
-
-    return output;
-  }
-  return format(obj, (typeof depth === 'undefined' ? 2 : depth));
-};
-
-
-function isArray(ar) {
-  return ar instanceof Array ||
-         Array.isArray(ar) ||
-         (ar && ar !== Object.prototype && isArray(ar.__proto__));
-}
-
-
-function isRegExp(re) {
-  return re instanceof RegExp ||
-    (typeof re === 'object' && Object.prototype.toString.call(re) === '[object RegExp]');
-}
-
-
-function isDate(d) {
-  if (d instanceof Date) return true;
-  if (typeof d !== 'object') return false;
-  var properties = Date.prototype && Object_getOwnPropertyNames(Date.prototype);
-  var proto = d.__proto__ && Object_getOwnPropertyNames(d.__proto__);
-  return JSON.stringify(proto) === JSON.stringify(properties);
-}
-
-function pad(n) {
-  return n < 10 ? '0' + n.toString(10) : n.toString(10);
-}
-
-var months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep',
-              'Oct', 'Nov', 'Dec'];
-
-// 26 Feb 16:19:34
-function timestamp() {
-  var d = new Date();
-  var time = [pad(d.getHours()),
-              pad(d.getMinutes()),
-              pad(d.getSeconds())].join(':');
-  return [d.getDate(), months[d.getMonth()], time].join(' ');
-}
-
-exports.log = function (msg) {};
-
-exports.pump = null;
-
-var Object_keys = Object.keys || function (obj) {
-    var res = [];
-    for (var key in obj) res.push(key);
-    return res;
-};
-
-var Object_getOwnPropertyNames = Object.getOwnPropertyNames || function (obj) {
-    var res = [];
-    for (var key in obj) {
-        if (Object.hasOwnProperty.call(obj, key)) res.push(key);
-    }
-    return res;
-};
-
-var Object_create = Object.create || function (prototype, properties) {
-    // from es5-shim
-    var object;
-    if (prototype === null) {
-        object = { '__proto__' : null };
-    }
-    else {
-        if (typeof prototype !== 'object') {
-            throw new TypeError(
-                'typeof prototype[' + (typeof prototype) + '] != \'object\''
-            );
-        }
-        var Type = function () {};
-        Type.prototype = prototype;
-        object = new Type();
-        object.__proto__ = prototype;
-    }
-    if (typeof properties !== 'undefined' && Object.defineProperties) {
-        Object.defineProperties(object, properties);
-    }
-    return object;
-};
-
-exports.inherits = function(ctor, superCtor) {
-  ctor.super_ = superCtor;
-  ctor.prototype = Object_create(superCtor.prototype, {
-    constructor: {
-      value: ctor,
-      enumerable: false,
-      writable: true,
-      configurable: true
-    }
-  });
-};
-
-var formatRegExp = /%[sdj%]/g;
-exports.format = function(f) {
-  if (typeof f !== 'string') {
-    var objects = [];
-    for (var i = 0; i < arguments.length; i++) {
-      objects.push(exports.inspect(arguments[i]));
-    }
-    return objects.join(' ');
-  }
-
-  var i = 1;
-  var args = arguments;
-  var len = args.length;
-  var str = String(f).replace(formatRegExp, function(x) {
-    if (x === '%%') return '%';
-    if (i >= len) return x;
-    switch (x) {
-      case '%s': return String(args[i++]);
-      case '%d': return Number(args[i++]);
-      case '%j': return JSON.stringify(args[i++]);
-      default:
-        return x;
-    }
-  });
-  for(var x = args[i]; i < len; x = args[++i]){
-    if (x === null || typeof x !== 'object') {
-      str += ' ' + x;
-    } else {
-      str += ' ' + exports.inspect(x);
-    }
-  }
-  return str;
-};
-
-},{"events":2}],12:[function(require,module,exports){
-(function(){// UTILITY
-var util = require('util');
-var Buffer = require("buffer").Buffer;
-var pSlice = Array.prototype.slice;
-
-function objectKeys(object) {
-  if (Object.keys) return Object.keys(object);
-  var result = [];
-  for (var name in object) {
-    if (Object.prototype.hasOwnProperty.call(object, name)) {
-      result.push(name);
-    }
-  }
-  return result;
-}
-
-// 1. The assert module provides functions that throw
-// AssertionError's when particular conditions are not met. The
-// assert module must conform to the following interface.
-
-var assert = module.exports = ok;
-
-// 2. The AssertionError is defined in assert.
-// new assert.AssertionError({ message: message,
-//                             actual: actual,
-//                             expected: expected })
-
-assert.AssertionError = function AssertionError(options) {
-  this.name = 'AssertionError';
-  this.message = options.message;
-  this.actual = options.actual;
-  this.expected = options.expected;
-  this.operator = options.operator;
-  var stackStartFunction = options.stackStartFunction || fail;
-
-  if (Error.captureStackTrace) {
-    Error.captureStackTrace(this, stackStartFunction);
-  }
-};
-util.inherits(assert.AssertionError, Error);
-
-function replacer(key, value) {
-  if (value === undefined) {
-    return '' + value;
-  }
-  if (typeof value === 'number' && (isNaN(value) || !isFinite(value))) {
-    return value.toString();
-  }
-  if (typeof value === 'function' || value instanceof RegExp) {
-    return value.toString();
-  }
-  return value;
-}
-
-function truncate(s, n) {
-  if (typeof s == 'string') {
-    return s.length < n ? s : s.slice(0, n);
-  } else {
-    return s;
-  }
-}
-
-assert.AssertionError.prototype.toString = function() {
-  if (this.message) {
-    return [this.name + ':', this.message].join(' ');
-  } else {
-    return [
-      this.name + ':',
-      truncate(JSON.stringify(this.actual, replacer), 128),
-      this.operator,
-      truncate(JSON.stringify(this.expected, replacer), 128)
-    ].join(' ');
-  }
-};
-
-// assert.AssertionError instanceof Error
-
-assert.AssertionError.__proto__ = Error.prototype;
-
-// At present only the three keys mentioned above are used and
-// understood by the spec. Implementations or sub modules can pass
-// other keys to the AssertionError's constructor - they will be
-// ignored.
-
-// 3. All of the following functions must throw an AssertionError
-// when a corresponding condition is not met, with a message that
-// may be undefined if not provided.  All assertion methods provide
-// both the actual and expected values to the assertion error for
-// display purposes.
-
-function fail(actual, expected, message, operator, stackStartFunction) {
-  throw new assert.AssertionError({
-    message: message,
-    actual: actual,
-    expected: expected,
-    operator: operator,
-    stackStartFunction: stackStartFunction
-  });
-}
-
-// EXTENSION! allows for well behaved errors defined elsewhere.
-assert.fail = fail;
-
-// 4. Pure assertion tests whether a value is truthy, as determined
-// by !!guard.
-// assert.ok(guard, message_opt);
-// This statement is equivalent to assert.equal(true, guard,
-// message_opt);. To test strictly for the value true, use
-// assert.strictEqual(true, guard, message_opt);.
-
-function ok(value, message) {
-  if (!!!value) fail(value, true, message, '==', assert.ok);
-}
-assert.ok = ok;
-
-// 5. The equality assertion tests shallow, coercive equality with
-// ==.
-// assert.equal(actual, expected, message_opt);
-
-assert.equal = function equal(actual, expected, message) {
-  if (actual != expected) fail(actual, expected, message, '==', assert.equal);
-};
-
-// 6. The non-equality assertion tests for whether two objects are not equal
-// with != assert.notEqual(actual, expected, message_opt);
-
-assert.notEqual = function notEqual(actual, expected, message) {
-  if (actual == expected) {
-    fail(actual, expected, message, '!=', assert.notEqual);
-  }
-};
-
-// 7. The equivalence assertion tests a deep equality relation.
-// assert.deepEqual(actual, expected, message_opt);
-
-assert.deepEqual = function deepEqual(actual, expected, message) {
-  if (!_deepEqual(actual, expected)) {
-    fail(actual, expected, message, 'deepEqual', assert.deepEqual);
-  }
-};
-
-function _deepEqual(actual, expected) {
-  // 7.1. All identical values are equivalent, as determined by ===.
-  if (actual === expected) {
-    return true;
-
-  } else if (Buffer.isBuffer(actual) && Buffer.isBuffer(expected)) {
-    if (actual.length != expected.length) return false;
-
-    for (var i = 0; i < actual.length; i++) {
-      if (actual[i] !== expected[i]) return false;
-    }
-
-    return true;
-
-  // 7.2. If the expected value is a Date object, the actual value is
-  // equivalent if it is also a Date object that refers to the same time.
-  } else if (actual instanceof Date && expected instanceof Date) {
-    return actual.getTime() === expected.getTime();
-
-  // 7.3. Other pairs that do not both pass typeof value == 'object',
-  // equivalence is determined by ==.
-  } else if (typeof actual != 'object' && typeof expected != 'object') {
-    return actual == expected;
-
-  // 7.4. For all other Object pairs, including Array objects, equivalence is
-  // determined by having the same number of owned properties (as verified
-  // with Object.prototype.hasOwnProperty.call), the same set of keys
-  // (although not necessarily the same order), equivalent values for every
-  // corresponding key, and an identical 'prototype' property. Note: this
-  // accounts for both named and indexed properties on Arrays.
-  } else {
-    return objEquiv(actual, expected);
-  }
-}
-
-function isUndefinedOrNull(value) {
-  return value === null || value === undefined;
-}
-
-function isArguments(object) {
-  return Object.prototype.toString.call(object) == '[object Arguments]';
-}
-
-function objEquiv(a, b) {
-  if (isUndefinedOrNull(a) || isUndefinedOrNull(b))
-    return false;
-  // an identical 'prototype' property.
-  if (a.prototype !== b.prototype) return false;
-  //~~~I've managed to break Object.keys through screwy arguments passing.
-  //   Converting to array solves the problem.
-  if (isArguments(a)) {
-    if (!isArguments(b)) {
-      return false;
-    }
-    a = pSlice.call(a);
-    b = pSlice.call(b);
-    return _deepEqual(a, b);
-  }
-  try {
-    var ka = objectKeys(a),
-        kb = objectKeys(b),
-        key, i;
-  } catch (e) {//happens when one is a string literal and the other isn't
-    return false;
-  }
-  // having the same number of owned properties (keys incorporates
-  // hasOwnProperty)
-  if (ka.length != kb.length)
-    return false;
-  //the same set of keys (although not necessarily the same order),
-  ka.sort();
-  kb.sort();
-  //~~~cheap key test
-  for (i = ka.length - 1; i >= 0; i--) {
-    if (ka[i] != kb[i])
-      return false;
-  }
-  //equivalent values for every corresponding key, and
-  //~~~possibly expensive deep test
-  for (i = ka.length - 1; i >= 0; i--) {
-    key = ka[i];
-    if (!_deepEqual(a[key], b[key])) return false;
-  }
-  return true;
-}
-
-// 8. The non-equivalence assertion tests for any deep inequality.
-// assert.notDeepEqual(actual, expected, message_opt);
-
-assert.notDeepEqual = function notDeepEqual(actual, expected, message) {
-  if (_deepEqual(actual, expected)) {
-    fail(actual, expected, message, 'notDeepEqual', assert.notDeepEqual);
-  }
-};
-
-// 9. The strict equality assertion tests strict equality, as determined by ===.
-// assert.strictEqual(actual, expected, message_opt);
-
-assert.strictEqual = function strictEqual(actual, expected, message) {
-  if (actual !== expected) {
-    fail(actual, expected, message, '===', assert.strictEqual);
-  }
-};
-
-// 10. The strict non-equality assertion tests for strict inequality, as
-// determined by !==.  assert.notStrictEqual(actual, expected, message_opt);
-
-assert.notStrictEqual = function notStrictEqual(actual, expected, message) {
-  if (actual === expected) {
-    fail(actual, expected, message, '!==', assert.notStrictEqual);
-  }
-};
-
-function expectedException(actual, expected) {
-  if (!actual || !expected) {
-    return false;
-  }
-
-  if (expected instanceof RegExp) {
-    return expected.test(actual);
-  } else if (actual instanceof expected) {
-    return true;
-  } else if (expected.call({}, actual) === true) {
-    return true;
-  }
-
-  return false;
-}
-
-function _throws(shouldThrow, block, expected, message) {
-  var actual;
-
-  if (typeof expected === 'string') {
-    message = expected;
-    expected = null;
-  }
-
-  try {
-    block();
-  } catch (e) {
-    actual = e;
-  }
-
-  message = (expected && expected.name ? ' (' + expected.name + ').' : '.') +
-            (message ? ' ' + message : '.');
-
-  if (shouldThrow && !actual) {
-    fail('Missing expected exception' + message);
-  }
-
-  if (!shouldThrow && expectedException(actual, expected)) {
-    fail('Got unwanted exception' + message);
-  }
-
-  if ((shouldThrow && actual && expected &&
-      !expectedException(actual, expected)) || (!shouldThrow && actual)) {
-    throw actual;
-  }
-}
-
-// 11. Expected to throw an error:
-// assert.throws(block, Error_opt, message_opt);
-
-assert.throws = function(block, /*optional*/error, /*optional*/message) {
-  _throws.apply(this, [true].concat(pSlice.call(arguments)));
-};
-
-// EXTENSION! This is annoying to write outside this module.
-assert.doesNotThrow = function(block, /*optional*/error, /*optional*/message) {
-  _throws.apply(this, [false].concat(pSlice.call(arguments)));
-};
-
-assert.ifError = function(err) { if (err) {throw err;}};
-
-})()
-},{"util":11,"buffer":13}],7:[function(require,module,exports){
-(function(){"use strict";
-
-var _ = require("underscore");
-
-var errors = {
-    // JSHint options
-    E001: "Bad option: '{a}'.",
-    E002: "Bad option value.",
-
-    // JSHint input
-    E003: "Expected a JSON value.",
-    E004: "Input is neither a string nor an array of strings.",
-    E005: "Input is empty.",
-    E006: "Unexpected early end of program.",
-
-    // Strict mode
-    E007: "Missing \"use strict\" statement.",
-    E008: "Strict violation.",
-    E009: "Option 'validthis' can't be used in a global scope.",
-    E010: "'with' is not allowed in strict mode.",
-
-    // Constants
-    E011: "const '{a}' has already been declared.",
-    E012: "const '{a}' is initialized to 'undefined'.",
-    E013: "Attempting to override '{a}' which is a constant.",
-
-    // Regular expressions
-    E014: "A regular expression literal can be confused with '/='.",
-    E015: "Unclosed regular expression.",
-    E016: "Invalid regular expression.",
-
-    // Tokens
-    E017: "Unclosed comment.",
-    E018: "Unbegun comment.",
-    E019: "Unmatched '{a}'.",
-    E020: "Expected '{a}' to match '{b}' from line {c} and instead saw '{d}'.",
-    E021: "Expected '{a}' and instead saw '{b}'.",
-    E022: "Line breaking error '{a}'.",
-    E023: "Missing '{a}'.",
-    E024: "Unexpected '{a}'.",
-    E025: "Missing ':' on a case clause.",
-    E026: "Missing '}' to match '{' from line {a}.",
-    E027: "Missing ']' to match '[' form line {a}.",
-    E028: "Illegal comma.",
-    E029: "Unclosed string.",
-
-    // Everything else
-    E030: "Expected an identifier and instead saw '{a}'.",
-    E031: "Bad assignment.", // FIXME: Rephrase
-    E032: "Expected a small integer or 'false' and instead saw '{a}'.",
-    E033: "Expected an operator and instead saw '{a}'.",
-    E034: "get/set are ES5 features.",
-    E035: "Missing property name.",
-    E036: "Expected to see a statement and instead saw a block.",
-    E037: "Constant {a} was not declared correctly.",
-    E038: "Variable {a} was not declared correctly.",
-    E039: "Function declarations are not invocable. Wrap the whole function invocation in parens.",
-    E040: "Each value should have its own case label.",
-    E041: "Unrecoverable syntax error.",
-    E042: "Stopping.",
-    E043: "Too many errors.",
-    E044: "'{a}' is already defined and can't be redefined.",
-    E045: "Invalid for each loop.",
-    E046: "A yield statement shall be within a generator function (with syntax: `function*`)",
-    E047: "A generator function shall contain a yield statement.",
-    E048: "Let declaration not directly within block.",
-    E049: "A {a} cannot be named '{b}'."
-};
-
-var warnings = {
-    W001: "'hasOwnProperty' is a really bad name.",
-    W002: "Value of '{a}' may be overwritten in IE.",
-    W003: "'{a}' was used before it was defined.",
-    W004: "'{a}' is already defined.",
-    W005: "A dot following a number can be confused with a decimal point.",
-    W006: "Confusing minuses.",
-    W007: "Confusing pluses.",
-    W008: "A leading decimal point can be confused with a dot: '{a}'.",
-    W009: "The array literal notation [] is preferrable.",
-    W010: "The object literal notation {} is preferrable.",
-    W011: "Unexpected space after '{a}'.",
-    W012: "Unexpected space before '{a}'.",
-    W013: "Missing space after '{a}'.",
-    W014: "Bad line breaking before '{a}'.",
-    W015: "Expected '{a}' to have an indentation at {b} instead at {c}.",
-    W016: "Unexpected use of '{a}'.",
-    W017: "Bad operand.",
-    W018: "Confusing use of '{a}'.",
-    W019: "Use the isNaN function to compare with NaN.",
-    W020: "Read only.",
-    W021: "'{a}' is a function.",
-    W022: "Do not assign to the exception parameter.",
-    W023: "Expected an identifier in an assignment and instead saw a function invocation.",
-    W024: "Expected an identifier and instead saw '{a}' (a reserved word).",
-    W025: "Missing name in function declaration.",
-    W026: "Inner functions should be listed at the top of the outer function.",
-    W027: "Unreachable '{a}' after '{b}'.",
-    W028: "Label '{a}' on {b} statement.",
-    W030: "Expected an assignment or function call and instead saw an expression.",
-    W031: "Do not use 'new' for side effects.",
-    W032: "Unnecessary semicolon.",
-    W033: "Missing semicolon.",
-    W034: "Unnecessary directive \"{a}\".",
-    W035: "Empty block.",
-    W036: "Unexpected /*member '{a}'.",
-    W037: "'{a}' is a statement label.",
-    W038: "'{a}' used out of scope.",
-    W039: "'{a}' is not allowed.",
-    W040: "Possible strict violation.",
-    W041: "Use '{a}' to compare with '{b}'.",
-    W042: "Avoid EOL escaping.",
-    W043: "Bad escaping of EOL. Use option multistr if needed.",
-    W044: "Bad or unnecessary escaping.",
-    W045: "Bad number '{a}'.",
-    W046: "Don't use extra leading zeros '{a}'.",
-    W047: "A trailing decimal point can be confused with a dot: '{a}'.",
-    W048: "Unexpected control character in regular expression.",
-    W049: "Unexpected escaped character '{a}' in regular expression.",
-    W050: "JavaScript URL.",
-    W051: "Variables should not be deleted.",
-    W052: "Unexpected '{a}'.",
-    W053: "Do not use {a} as a constructor.",
-    W054: "The Function constructor is a form of eval.",
-    W055: "A constructor name should start with an uppercase letter.",
-    W056: "Bad constructor.",
-    W057: "Weird construction. Is 'new' unnecessary?",
-    W058: "Missing '()' invoking a constructor.",
-    W059: "Avoid arguments.{a}.",
-    W060: "document.write can be a form of eval.",
-    W061: "eval can be harmful.",
-    W062: "Wrap an immediate function invocation in parens " +
-        "to assist the reader in understanding that the expression " +
-        "is the result of a function, and not the function itself.",
-    W063: "Math is not a function.",
-    W064: "Missing 'new' prefix when invoking a constructor.",
-    W065: "Missing radix parameter.",
-    W066: "Implied eval. Consider passing a function instead of a string.",
-    W067: "Bad invocation.",
-    W068: "Wrapping non-IIFE function literals in parens is unnecessary.",
-    W069: "['{a}'] is better written in dot notation.",
-    W070: "Extra comma. (it breaks older versions of IE)",
-    W071: "This function has too many statements. ({a})",
-    W072: "This function has too many parameters. ({a})",
-    W073: "Blocks are nested too deeply. ({a})",
-    W074: "This function's cyclomatic complexity is too high. ({a})",
-    W075: "Duplicate key '{a}'.",
-    W076: "Unexpected parameter '{a}' in get {b} function.",
-    W077: "Expected a single parameter in set {a} function.",
-    W078: "Setter is defined without getter.",
-    W079: "Redefinition of '{a}'.",
-    W080: "It's not necessary to initialize '{a}' to 'undefined'.",
-    W081: "Too many var statements.",
-    W082: "Function declarations should not be placed in blocks. " +
-        "Use a function expression or move the statement to the top of " +
-        "the outer function.",
-    W083: "Don't make functions within a loop.",
-    W084: "Expected a conditional expression and instead saw an assignment.",
-    W085: "Don't use 'with'.",
-    W086: "Expected a 'break' statement before '{a}'.",
-    W087: "Forgotten 'debugger' statement?",
-    W088: "Creating global 'for' variable. Should be 'for (var {a} ...'.",
-    W089: "The body of a for in should be wrapped in an if statement to filter " +
-        "unwanted properties from the prototype.",
-    W090: "'{a}' is not a statement label.",
-    W091: "'{a}' is out of scope.",
-    W092: "Wrap the /regexp/ literal in parens to disambiguate the slash operator.",
-    W093: "Did you mean to return a conditional instead of an assignment?",
-    W094: "Unexpected comma.",
-    W095: "Expected a string and instead saw {a}.",
-    W096: "The '{a}' key may produce unexpected results.",
-    W097: "Use the function form of \"use strict\".",
-    W098: "'{a}' is defined but never used.",
-    W099: "Mixed spaces and tabs.",
-    W100: "This character may get silently deleted by one or more browsers.",
-    W101: "Line is too long.",
-    W102: "Trailing whitespace.",
-    W103: "The '{a}' property is deprecated.",
-    W104: "'{a}' is only available in JavaScript 1.7.",
-    W105: "Unexpected {a} in '{b}'.",
-    W106: "Identifier '{a}' is not in camel case.",
-    W107: "Script URL.",
-    W108: "Strings must use doublequote.",
-    W109: "Strings must use singlequote.",
-    W110: "Mixed double and single quotes.",
-    W112: "Unclosed string.",
-    W113: "Control character in string: {a}.",
-    W114: "Avoid {a}.",
-    W115: "Octal literals are not allowed in strict mode.",
-    W116: "Expected '{a}' and instead saw '{b}'.",
-    W117: "'{a}' is not defined.",
-    W118: "'{a}' is only available in Mozilla JavaScript extensions (use moz option).",
-    W119: "'{a}' is only available in ES6 (use esnext option)."
-};
-
-var info = {
-    I001: "Comma warnings can be turned off with 'laxcomma'.",
-    I002: "Reserved words as properties can be used under the 'es5' option.",
-    I003: "ES5 option is now set per default"
-};
-
-exports.errors = {};
-exports.warnings = {};
-exports.info = {};
-
-_.each(errors, function (desc, code) {
-    exports.errors[code] = { code: code, desc: desc };
-});
-
-_.each(warnings, function (desc, code) {
-    exports.warnings[code] = { code: code, desc: desc };
-});
-
-_.each(info, function (desc, code) {
-    exports.info[code] = { code: code, desc: desc };
-});
-
-})()
-},{"underscore":9}],8:[function(require,module,exports){
-(function(){/*
- * Lexical analysis and token construction.
- */
-
-"use strict";
-
-var _      = require("underscore");
-var events = require("events");
-var reg    = require("./reg.js");
-var state  = require("./state.js").state;
-
-// Some of these token types are from JavaScript Parser API
-// while others are specific to JSHint parser.
-// JS Parser API: https://developer.mozilla.org/en-US/docs/SpiderMonkey/Parser_API
-
-var Token = {
-    Identifier: 1,
-    Punctuator: 2,
-    NumericLiteral: 3,
-    StringLiteral: 4,
-    Comment: 5,
-    Keyword: 6,
-    NullLiteral: 7,
-    BooleanLiteral: 8,
-    RegExp: 9
-};
-
-// This is auto generated from the unicode tables.
-// The tables are at:
-// http://www.fileformat.info/info/unicode/category/Lu/list.htm
-// http://www.fileformat.info/info/unicode/category/Ll/list.htm
-// http://www.fileformat.info/info/unicode/category/Lt/list.htm
-// http://www.fileformat.info/info/unicode/category/Lm/list.htm
-// http://www.fileformat.info/info/unicode/category/Lo/list.htm
-// http://www.fileformat.info/info/unicode/category/Nl/list.htm
-
-var unicodeLetterTable = [
-    170, 170, 181, 181, 186, 186, 192, 214,
-    216, 246, 248, 705, 710, 721, 736, 740, 748, 748, 750, 750,
-    880, 884, 886, 887, 890, 893, 902, 902, 904, 906, 908, 908,
-    910, 929, 931, 1013, 1015, 1153, 1162, 1319, 1329, 1366,
-    1369, 1369, 1377, 1415, 1488, 1514, 1520, 1522, 1568, 1610,
-    1646, 1647, 1649, 1747, 1749, 1749, 1765, 1766, 1774, 1775,
-    1786, 1788, 1791, 1791, 1808, 1808, 1810, 1839, 1869, 1957,
-    1969, 1969, 1994, 2026, 2036, 2037, 2042, 2042, 2048, 2069,
-    2074, 2074, 2084, 2084, 2088, 2088, 2112, 2136, 2308, 2361,
-    2365, 2365, 2384, 2384, 2392, 2401, 2417, 2423, 2425, 2431,
-    2437, 2444, 2447, 2448, 2451, 2472, 2474, 2480, 2482, 2482,
-    2486, 2489, 2493, 2493, 2510, 2510, 2524, 2525, 2527, 2529,
-    2544, 2545, 2565, 2570, 2575, 2576, 2579, 2600, 2602, 2608,
-    2610, 2611, 2613, 2614, 2616, 2617, 2649, 2652, 2654, 2654,
-    2674, 2676, 2693, 2701, 2703, 2705, 2707, 2728, 2730, 2736,
-    2738, 2739, 2741, 2745, 2749, 2749, 2768, 2768, 2784, 2785,
-    2821, 2828, 2831, 2832, 2835, 2856, 2858, 2864, 2866, 2867,
-    2869, 2873, 2877, 2877, 2908, 2909, 2911, 2913, 2929, 2929,
-    2947, 2947, 2949, 2954, 2958, 2960, 2962, 2965, 2969, 2970,
-    2972, 2972, 2974, 2975, 2979, 2980, 2984, 2986, 2990, 3001,
-    3024, 3024, 3077, 3084, 3086, 3088, 3090, 3112, 3114, 3123,
-    3125, 3129, 3133, 3133, 3160, 3161, 3168, 3169, 3205, 3212,
-    3214, 3216, 3218, 3240, 3242, 3251, 3253, 3257, 3261, 3261,
-    3294, 3294, 3296, 3297, 3313, 3314, 3333, 3340, 3342, 3344,
-    3346, 3386, 3389, 3389, 3406, 3406, 3424, 3425, 3450, 3455,
-    3461, 3478, 3482, 3505, 3507, 3515, 3517, 3517, 3520, 3526,
-    3585, 3632, 3634, 3635, 3648, 3654, 3713, 3714, 3716, 3716,
-    3719, 3720, 3722, 3722, 3725, 3725, 3732, 3735, 3737, 3743,
-    3745, 3747, 3749, 3749, 3751, 3751, 3754, 3755, 3757, 3760,
-    3762, 3763, 3773, 3773, 3776, 3780, 3782, 3782, 3804, 3805,
-    3840, 3840, 3904, 3911, 3913, 3948, 3976, 3980, 4096, 4138,
-    4159, 4159, 4176, 4181, 4186, 4189, 4193, 4193, 4197, 4198,
-    4206, 4208, 4213, 4225, 4238, 4238, 4256, 4293, 4304, 4346,
-    4348, 4348, 4352, 4680, 4682, 4685, 4688, 4694, 4696, 4696,
-    4698, 4701, 4704, 4744, 4746, 4749, 4752, 4784, 4786, 4789,
-    4792, 4798, 4800, 4800, 4802, 4805, 4808, 4822, 4824, 4880,
-    4882, 4885, 4888, 4954, 4992, 5007, 5024, 5108, 5121, 5740,
-    5743, 5759, 5761, 5786, 5792, 5866, 5870, 5872, 5888, 5900,
-    5902, 5905, 5920, 5937, 5952, 5969, 5984, 5996, 5998, 6000,
-    6016, 6067, 6103, 6103, 6108, 6108, 6176, 6263, 6272, 6312,
-    6314, 6314, 6320, 6389, 6400, 6428, 6480, 6509, 6512, 6516,
-    6528, 6571, 6593, 6599, 6656, 6678, 6688, 6740, 6823, 6823,
-    6917, 6963, 6981, 6987, 7043, 7072, 7086, 7087, 7104, 7141,
-    7168, 7203, 7245, 7247, 7258, 7293, 7401, 7404, 7406, 7409,
-    7424, 7615, 7680, 7957, 7960, 7965, 7968, 8005, 8008, 8013,
-    8016, 8023, 8025, 8025, 8027, 8027, 8029, 8029, 8031, 8061,
-    8064, 8116, 8118, 8124, 8126, 8126, 8130, 8132, 8134, 8140,
-    8144, 8147, 8150, 8155, 8160, 8172, 8178, 8180, 8182, 8188,
-    8305, 8305, 8319, 8319, 8336, 8348, 8450, 8450, 8455, 8455,
-    8458, 8467, 8469, 8469, 8473, 8477, 8484, 8484, 8486, 8486,
-    8488, 8488, 8490, 8493, 8495, 8505, 8508, 8511, 8517, 8521,
-    8526, 8526, 8544, 8584, 11264, 11310, 11312, 11358,
-    11360, 11492, 11499, 11502, 11520, 11557, 11568, 11621,
-    11631, 11631, 11648, 11670, 11680, 11686, 11688, 11694,
-    11696, 11702, 11704, 11710, 11712, 11718, 11720, 11726,
-    11728, 11734, 11736, 11742, 11823, 11823, 12293, 12295,
-    12321, 12329, 12337, 12341, 12344, 12348, 12353, 12438,
-    12445, 12447, 12449, 12538, 12540, 12543, 12549, 12589,
-    12593, 12686, 12704, 12730, 12784, 12799, 13312, 13312,
-    19893, 19893, 19968, 19968, 40907, 40907, 40960, 42124,
-    42192, 42237, 42240, 42508, 42512, 42527, 42538, 42539,
-    42560, 42606, 42623, 42647, 42656, 42735, 42775, 42783,
-    42786, 42888, 42891, 42894, 42896, 42897, 42912, 42921,
-    43002, 43009, 43011, 43013, 43015, 43018, 43020, 43042,
-    43072, 43123, 43138, 43187, 43250, 43255, 43259, 43259,
-    43274, 43301, 43312, 43334, 43360, 43388, 43396, 43442,
-    43471, 43471, 43520, 43560, 43584, 43586, 43588, 43595,
-    43616, 43638, 43642, 43642, 43648, 43695, 43697, 43697,
-    43701, 43702, 43705, 43709, 43712, 43712, 43714, 43714,
-    43739, 43741, 43777, 43782, 43785, 43790, 43793, 43798,
-    43808, 43814, 43816, 43822, 43968, 44002, 44032, 44032,
-    55203, 55203, 55216, 55238, 55243, 55291, 63744, 64045,
-    64048, 64109, 64112, 64217, 64256, 64262, 64275, 64279,
-    64285, 64285, 64287, 64296, 64298, 64310, 64312, 64316,
-    64318, 64318, 64320, 64321, 64323, 64324, 64326, 64433,
-    64467, 64829, 64848, 64911, 64914, 64967, 65008, 65019,
-    65136, 65140, 65142, 65276, 65313, 65338, 65345, 65370,
-    65382, 65470, 65474, 65479, 65482, 65487, 65490, 65495,
-    65498, 65500, 65536, 65547, 65549, 65574, 65576, 65594,
-    65596, 65597, 65599, 65613, 65616, 65629, 65664, 65786,
-    65856, 65908, 66176, 66204, 66208, 66256, 66304, 66334,
-    66352, 66378, 66432, 66461, 66464, 66499, 66504, 66511,
-    66513, 66517, 66560, 66717, 67584, 67589, 67592, 67592,
-    67594, 67637, 67639, 67640, 67644, 67644, 67647, 67669,
-    67840, 67861, 67872, 67897, 68096, 68096, 68112, 68115,
-    68117, 68119, 68121, 68147, 68192, 68220, 68352, 68405,
-    68416, 68437, 68448, 68466, 68608, 68680, 69635, 69687,
-    69763, 69807, 73728, 74606, 74752, 74850, 77824, 78894,
-    92160, 92728, 110592, 110593, 119808, 119892, 119894, 119964,
-    119966, 119967, 119970, 119970, 119973, 119974, 119977, 119980,
-    119982, 119993, 119995, 119995, 119997, 120003, 120005, 120069,
-    120071, 120074, 120077, 120084, 120086, 120092, 120094, 120121,
-    120123, 120126, 120128, 120132, 120134, 120134, 120138, 120144,
-    120146, 120485, 120488, 120512, 120514, 120538, 120540, 120570,
-    120572, 120596, 120598, 120628, 120630, 120654, 120656, 120686,
-    120688, 120712, 120714, 120744, 120746, 120770, 120772, 120779,
-    131072, 131072, 173782, 173782, 173824, 173824, 177972, 177972,
-    177984, 177984, 178205, 178205, 194560, 195101
-];
-
-var identifierStartTable = [];
-
-for (var i = 0; i < 128; i++) {
-    identifierStartTable[i] =
-        i === 36 ||           // $
-        i >= 65 && i <= 90 || // A-Z
-        i === 95 ||           // _
-        i >= 97 && i <= 122;  // a-z
-}
-
-var identifierPartTable = [];
-
-for (var i = 0; i < 128; i++) {
-    identifierPartTable[i] =
-        identifierStartTable[i] || // $, _, A-Z, a-z
-        i >= 48 && i <= 57;        // 0-9
-}
-
-// Object that handles postponed lexing verifications that checks the parsed
-// environment state.
-
-function asyncTrigger() {
-    var _checks = [];
-
-    return {
-        push: function (fn) {
-            _checks.push(fn);
-        },
-
-        check: function () {
-            for (var check in _checks) {
-                _checks[check]();
-            }
-
-            _checks.splice(0, _checks.length);
-        }
-    };
-}
-
-/*
- * Lexer for JSHint.
- *
- * This object does a char-by-char scan of the provided source code
- * and produces a sequence of tokens.
- *
- *   var lex = new Lexer("var i = 0;");
- *   lex.start();
- *   lex.token(); // returns the next token
- *
- * You have to use the token() method to move the lexer forward
- * but you don't have to use its return value to get tokens. In addition
- * to token() method returning the next token, the Lexer object also
- * emits events.
- *
- *   lex.on("Identifier", function (data) {
- *     if (data.name.indexOf("_") >= 0) {
- *       // Produce a warning.
- *     }
- *   });
- *
- * Note that the token() method returns tokens in a JSLint-compatible
- * format while the event emitter uses a slightly modified version of
- * Mozilla's JavaScript Parser API. Eventually, we will move away from
- * JSLint format.
- */
-function Lexer(source) {
-    var lines = source;
-
-    if (typeof lines === "string") {
-        lines = lines
-            .replace(/\r\n/g, "\n")
-            .replace(/\r/g, "\n")
-            .split("\n");
-    }
-
-    // If the first line is a shebang (#!), make it a blank and move on.
-    // Shebangs are used by Node scripts.
-
-    if (lines[0] && lines[0].substr(0, 2) === "#!") {
-        lines[0] = "";
-    }
-
-    this.emitter = new events.EventEmitter();
-    this.source = source;
-    this.lines = lines;
-    this.prereg = true;
-
-    this.line = 0;
-    this.char = 1;
-    this.from = 1;
-    this.input = "";
-
-    for (var i = 0; i < state.option.indent; i += 1) {
-        state.tab += " ";
-    }
-}
-
-Lexer.prototype = {
-    _lines: [],
-
-    get lines() {
-        this._lines = state.lines;
-        return this._lines;
-    },
-
-    set lines(val) {
-        this._lines = val;
-        state.lines = this._lines;
-    },
-
-    /*
-     * Return the next i character without actually moving the
-     * char pointer.
-     */
-    peek: function (i) {
-        return this.input.charAt(i || 0);
-    },
-
-    /*
-     * Move the char pointer forward i times.
-     */
-    skip: function (i) {
-        i = i || 1;
-        this.char += i;
-        this.input = this.input.slice(i);
-    },
-
-    /*
-     * Subscribe to a token event. The API for this method is similar
-     * Underscore.js i.e. you can subscribe to multiple events with
-     * one call:
-     *
-     *   lex.on("Identifier Number", function (data) {
-     *     // ...
-     *   });
-     */
-    on: function (names, listener) {
-        names.split(" ").forEach(function (name) {
-            this.emitter.on(name, listener);
-        }.bind(this));
-    },
-
-    /*
-     * Trigger a token event. All arguments will be passed to each
-     * listener.
-     */
-    trigger: function () {
-        this.emitter.emit.apply(this.emitter, Array.prototype.slice.call(arguments));
-    },
-
-    /*
-     * Postpone a token event. the checking condition is set as
-     * last parameter, and the trigger function is called in a
-     * stored callback. To be later called using the check() function
-     * by the parser. This avoids parser's peek() to give the lexer
-     * a false context.
-     */
-    triggerAsync: function (type, args, checks, fn) {
-        checks.push(function () {
-            if (fn()) {
-                this.trigger(type, args);
-            }
-        }.bind(this));
-    },
-
-    /*
-     * Extract a punctuator out of the next sequence of characters
-     * or return 'null' if its not possible.
-     *
-     * This method's implementation was heavily influenced by the
-     * scanPunctuator function in the Esprima parser's source code.
-     */
-    scanPunctuator: function () {
-        var ch1 = this.peek();
-        var ch2, ch3, ch4;
-
-        switch (ch1) {
-        // Most common single-character punctuators
-        case ".":
-            if ((/^[0-9]$/).test(this.peek(1))) {
-                return null;
-            }
-            if (this.peek(1) === "." && this.peek(2) === ".") {
-                return {
-                    type: Token.Punctuator,
-                    value: "..."
-                };
-            }
-            /* falls through */
-        case "(":
-        case ")":
-        case ";":
-        case ",":
-        case "{":
-        case "}":
-        case "[":
-        case "]":
-        case ":":
-        case "~":
-        case "?":
-            return {
-                type: Token.Punctuator,
-                value: ch1
-            };
-
-        // A pound sign (for Node shebangs)
-        case "#":
-            return {
-                type: Token.Punctuator,
-                value: ch1
-            };
-
-        // We're at the end of input
-        case "":
-            return null;
-        }
-
-        // Peek more characters
-
-        ch2 = this.peek(1);
-        ch3 = this.peek(2);
-        ch4 = this.peek(3);
-
-        // 4-character punctuator: >>>=
-
-        if (ch1 === ">" && ch2 === ">" && ch3 === ">" && ch4 === "=") {
-            return {
-                type: Token.Punctuator,
-                value: ">>>="
-            };
-        }
-
-        // 3-character punctuators: === !== >>> <<= >>=
-
-        if (ch1 === "=" && ch2 === "=" && ch3 === "=") {
-            return {
-                type: Token.Punctuator,
-                value: "==="
-            };
-        }
-
-        if (ch1 === "!" && ch2 === "=" && ch3 === "=") {
-            return {
-                type: Token.Punctuator,
-                value: "!=="
-            };
-        }
-
-        if (ch1 === ">" && ch2 === ">" && ch3 === ">") {
-            return {
-                type: Token.Punctuator,
-                value: ">>>"
-            };
-        }
-
-        if (ch1 === "<" && ch2 === "<" && ch3 === "=") {
-            return {
-                type: Token.Punctuator,
-                value: "<<="
-            };
-        }
-
-        if (ch1 === ">" && ch2 === ">" && ch3 === "=") {
-            return {
-                type: Token.Punctuator,
-                value: ">>="
-            };
-        }
-
-        // Fat arrow punctuator
-        if (ch1 === "=" && ch2 === ">") {
-            return {
-                type: Token.Punctuator,
-                value: ch1 + ch2
-            };
-        }
-
-        // 2-character punctuators: <= >= == != ++ -- << >> && ||
-        // += -= *= %= &= |= ^= (but not /=, see below)
-        if (ch1 === ch2 && ("+-<>&|".indexOf(ch1) >= 0)) {
-            return {
-                type: Token.Punctuator,
-                value: ch1 + ch2
-            };
-        }
-
-        if ("<>=!+-*%&|^".indexOf(ch1) >= 0) {
-            if (ch2 === "=") {
-                return {
-                    type: Token.Punctuator,
-                    value: ch1 + ch2
-                };
-            }
-
-            return {
-                type: Token.Punctuator,
-                value: ch1
-            };
-        }
-
-        // Special case: /=. We need to make sure that this is an
-        // operator and not a regular expression.
-
-        if (ch1 === "/") {
-            if (ch2 === "=" && /\/=(?!(\S*\/[gim]?))/.test(this.input)) {
-                // /= is not a part of a regular expression, return it as a
-                // punctuator.
-                return {
-                    type: Token.Punctuator,
-                    value: "/="
-                };
-            }
-
-            return {
-                type: Token.Punctuator,
-                value: "/"
-            };
-        }
-
-        return null;
-    },
-
-    /*
-     * Extract a comment out of the next sequence of characters and/or
-     * lines or return 'null' if its not possible. Since comments can
-     * span across multiple lines this method has to move the char
-     * pointer.
-     *
-     * In addition to normal JavaScript comments (// and /*) this method
-     * also recognizes JSHint- and JSLint-specific comments such as
-     * /*jshint, /*jslint, /*globals and so on.
-     */
-    scanComments: function () {
-        var ch1 = this.peek();
-        var ch2 = this.peek(1);
-        var rest = this.input.substr(2);
-        var startLine = this.line;
-        var startChar = this.char;
-
-        // Create a comment token object and make sure it
-        // has all the data JSHint needs to work with special
-        // comments.
-
-        function commentToken(label, body, opt) {
-            var special = ["jshint", "jslint", "members", "member", "globals", "global", "exported"];
-            var isSpecial = false;
-            var value = label + body;
-            var commentType = "plain";
-            opt = opt || {};
-
-            if (opt.isMultiline) {
-                value += "*/";
-            }
-
-            special.forEach(function (str) {
-                if (isSpecial) {
-                    return;
-                }
-
-                // Don't recognize any special comments other than jshint for single-line
-                // comments. This introduced many problems with legit comments.
-                if (label === "//" && str !== "jshint") {
-                    return;
-                }
-
-                if (body.substr(0, str.length) === str) {
-                    isSpecial = true;
-                    label = label + str;
-                    body = body.substr(str.length);
-                }
-
-                if (!isSpecial && body.charAt(0) === " " && body.substr(1, str.length) === str) {
-                    isSpecial = true;
-                    label = label + " " + str;
-                    body = body.substr(str.length + 1);
-                }
-
-                if (!isSpecial) {
-                    return;
-                }
-
-                switch (str) {
-                case "member":
-                    commentType = "members";
-                    break;
-                case "global":
-                    commentType = "globals";
-                    break;
-                default:
-                    commentType = str;
-                }
-            });
-
-            return {
-                type: Token.Comment,
-                commentType: commentType,
-                value: value,
-                body: body,
-                isSpecial: isSpecial,
-                isMultiline: opt.isMultiline || false,
-                isMalformed: opt.isMalformed || false
-            };
-        }
-
-        // End of unbegun comment. Raise an error and skip that input.
-        if (ch1 === "*" && ch2 === "/") {
-            this.trigger("error", {
-                code: "E018",
-                line: startLine,
-                character: startChar
-            });
-
-            this.skip(2);
-            return null;
-        }
-
-        // Comments must start either with // or /*
-        if (ch1 !== "/" || (ch2 !== "*" && ch2 !== "/")) {
-            return null;
-        }
-
-        // One-line comment
-        if (ch2 === "/") {
-            this.skip(this.input.length); // Skip to the EOL.
-            return commentToken("//", rest);
-        }
-
-        var body = "";
-
-        /* Multi-line comment */
-        if (ch2 === "*") {
-            this.skip(2);
-
-            while (this.peek() !== "*" || this.peek(1) !== "/") {
-                if (this.peek() === "") { // End of Line
-                    body += "\n";
-
-                    // If we hit EOF and our comment is still unclosed,
-                    // trigger an error and end the comment implicitly.
-                    if (!this.nextLine()) {
-                        this.trigger("error", {
-                            code: "E017",
-                            line: startLine,
-                            character: startChar
-                        });
-
-                        return commentToken("/*", body, {
-                            isMultiline: true,
-                            isMalformed: true
-                        });
-                    }
-                } else {
-                    body += this.peek();
-                    this.skip();
-                }
-            }
-
-            this.skip(2);
-            return commentToken("/*", body, { isMultiline: true });
-        }
-    },
-
-    /*
-     * Extract a keyword out of the next sequence of characters or
-     * return 'null' if its not possible.
-     */
-    scanKeyword: function () {
-        var result = /^[a-zA-Z_$][a-zA-Z0-9_$]*/.exec(this.input);
-        var keywords = [
-            "if", "in", "do", "var", "for", "new",
-            "try", "let", "this", "else", "case",
-            "void", "with", "enum", "while", "break",
-            "catch", "throw", "const", "yield", "class",
-            "super", "return", "typeof", "delete",
-            "switch", "export", "import", "default",
-            "finally", "extends", "function", "continue",
-            "debugger", "instanceof"
-        ];
-
-        if (result && keywords.indexOf(result[0]) >= 0) {
-            return {
-                type: Token.Keyword,
-                value: result[0]
-            };
-        }
-
-        return null;
-    },
-
-    /*
-     * Extract a JavaScript identifier out of the next sequence of
-     * characters or return 'null' if its not possible. In addition,
-     * to Identifier this method can also produce BooleanLiteral
-     * (true/false) and NullLiteral (null).
-     */
-    scanIdentifier: function () {
-        var id = "";
-        var index = 0;
-        var type, char;
-
-        // Detects any character in the Unicode categories "Uppercase
-        // letter (Lu)", "Lowercase letter (Ll)", "Titlecase letter
-        // (Lt)", "Modifier letter (Lm)", "Other letter (Lo)", or
-        // "Letter number (Nl)".
-        //
-        // Both approach and unicodeLetterTable were borrowed from
-        // Google's Traceur.
-
-        function isUnicodeLetter(code) {
-            for (var i = 0; i < unicodeLetterTable.length;) {
-                if (code < unicodeLetterTable[i++]) {
-                    return false;
-                }
-
-                if (code <= unicodeLetterTable[i++]) {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        function isHexDigit(str) {
-            return (/^[0-9a-fA-F]$/).test(str);
-        }
-
-        var readUnicodeEscapeSequence = function () {
-            /*jshint validthis:true */
-            index += 1;
-
-            if (this.peek(index) !== "u") {
-                return null;
-            }
-
-            var ch1 = this.peek(index + 1);
-            var ch2 = this.peek(index + 2);
-            var ch3 = this.peek(index + 3);
-            var ch4 = this.peek(index + 4);
-            var code;
-
-            if (isHexDigit(ch1) && isHexDigit(ch2) && isHexDigit(ch3) && isHexDigit(ch4)) {
-                code = parseInt(ch1 + ch2 + ch3 + ch4, 16);
-
-                if (isUnicodeLetter(code)) {
-                    index += 5;
-                    return "\\u" + ch1 + ch2 + ch3 + ch4;
-                }
-
-                return null;
-            }
-
-            return null;
-        }.bind(this);
-
-        var getIdentifierStart = function () {
-            /*jshint validthis:true */
-            var chr = this.peek(index);
-            var code = chr.charCodeAt(0);
-
-            if (code === 92) {
-                return readUnicodeEscapeSequence();
-            }
-
-            if (code < 128) {
-                if (identifierStartTable[code]) {
-                    index += 1;
-                    return chr;
-                }
-
-                return null;
-            }
-
-            if (isUnicodeLetter(code)) {
-                index += 1;
-                return chr;
-            }
-
-            return null;
-        }.bind(this);
-
-        var getIdentifierPart = function () {
-            /*jshint validthis:true */
-            var chr = this.peek(index);
-            var code = chr.charCodeAt(0);
-
-            if (code === 92) {
-                return readUnicodeEscapeSequence();
-            }
-
-            if (code < 128) {
-                if (identifierPartTable[code]) {
-                    index += 1;
-                    return chr;
-                }
-
-                return null;
-            }
-
-            if (isUnicodeLetter(code)) {
-                index += 1;
-                return chr;
-            }
-
-            return null;
-        }.bind(this);
-
-        char = getIdentifierStart();
-        if (char === null) {
-            return null;
-        }
-
-        id = char;
-        for (;;) {
-            char = getIdentifierPart();
-
-            if (char === null) {
-                break;
-            }
-
-            id += char;
-        }
-
-        switch (id) {
-        case "true":
-        case "false":
-            type = Token.BooleanLiteral;
-            break;
-        case "null":
-            type = Token.NullLiteral;
-            break;
-        default:
-            type = Token.Identifier;
-        }
-
-        return {
-            type: type,
-            value: id
-        };
-    },
-
-    /*
-     * Extract a numeric literal out of the next sequence of
-     * characters or return 'null' if its not possible. This method
-     * supports all numeric literals described in section 7.8.3
-     * of the EcmaScript 5 specification.
-     *
-     * This method's implementation was heavily influenced by the
-     * scanNumericLiteral function in the Esprima parser's source code.
-     */
-    scanNumericLiteral: function () {
-        var index = 0;
-        var value = "";
-        var length = this.input.length;
-        var char = this.peek(index);
-        var bad;
-
-        function isDecimalDigit(str) {
-            return (/^[0-9]$/).test(str);
-        }
-
-        function isOctalDigit(str) {
-            return (/^[0-7]$/).test(str);
-        }
-
-        function isHexDigit(str) {
-            return (/^[0-9a-fA-F]$/).test(str);
-        }
-
-        function isIdentifierStart(ch) {
-            return (ch === "$") || (ch === "_") || (ch === "\\") ||
-                (ch >= "a" && ch <= "z") || (ch >= "A" && ch <= "Z");
-        }
-
-        // Numbers must start either with a decimal digit or a point.
-
-        if (char !== "." && !isDecimalDigit(char)) {
-            return null;
-        }
-
-        if (char !== ".") {
-            value = this.peek(index);
-            index += 1;
-            char = this.peek(index);
-
-            if (value === "0") {
-                // Base-16 numbers.
-                if (char === "x" || char === "X") {
-                    index += 1;
-                    value += char;
-
-                    while (index < length) {
-                        char = this.peek(index);
-                        if (!isHexDigit(char)) {
-                            break;
-                        }
-                        value += char;
-                        index += 1;
-                    }
-
-                    if (value.length <= 2) { // 0x
-                        return {
-                            type: Token.NumericLiteral,
-                            value: value,
-                            isMalformed: true
-                        };
-                    }
-
-                    if (index < length) {
-                        char = this.peek(index);
-                        if (isIdentifierStart(char)) {
-                            return null;
-                        }
-                    }
-
-                    return {
-                        type: Token.NumericLiteral,
-                        value: value,
-                        base: 16,
-                        isMalformed: false
-                    };
-                }
-
-                // Base-8 numbers.
-                if (isOctalDigit(char)) {
-                    index += 1;
-                    value += char;
-                    bad = false;
-
-                    while (index < length) {
-                        char = this.peek(index);
-
-                        // Numbers like '019' (note the 9) are not valid octals
-                        // but we still parse them and mark as malformed.
-
-                        if (isDecimalDigit(char)) {
-                            bad = true;
-                        } else if (!isOctalDigit(char)) {
-                            break;
-                        }
-                        value += char;
-                        index += 1;
-                    }
-
-                    if (index < length) {
-                        char = this.peek(index);
-                        if (isIdentifierStart(char)) {
-                            return null;
-                        }
-                    }
-
-                    return {
-                        type: Token.NumericLiteral,
-                        value: value,
-                        base: 8,
-                        isMalformed: false
-                    };
-                }
-
-                // Decimal numbers that start with '0' such as '09' are illegal
-                // but we still parse them and return as malformed.
-
-                if (isDecimalDigit(char)) {
-                    index += 1;
-                    value += char;
-                }
-            }
-
-            while (index < length) {
-                char = this.peek(index);
-                if (!isDecimalDigit(char)) {
-                    break;
-                }
-                value += char;
-                index += 1;
-            }
-        }
-
-        // Decimal digits.
-
-        if (char === ".") {
-            value += char;
-            index += 1;
-
-            while (index < length) {
-                char = this.peek(index);
-                if (!isDecimalDigit(char)) {
-                    break;
-                }
-                value += char;
-                index += 1;
-            }
-        }
-
-        // Exponent part.
-
-        if (char === "e" || char === "E") {
-            value += char;
-            index += 1;
-            char = this.peek(index);
-
-            if (char === "+" || char === "-") {
-                value += this.peek(index);
-                index += 1;
-            }
-
-            char = this.peek(index);
-            if (isDecimalDigit(char)) {
-                value += char;
-                index += 1;
-
-                while (index < length) {
-                    char = this.peek(index);
-                    if (!isDecimalDigit(char)) {
-                        break;
-                    }
-                    value += char;
-                    index += 1;
-                }
-            } else {
-                return null;
-            }
-        }
-
-        if (index < length) {
-            char = this.peek(index);
-            if (isIdentifierStart(char)) {
-                return null;
-            }
-        }
-
-        return {
-            type: Token.NumericLiteral,
-            value: value,
-            base: 10,
-            isMalformed: !isFinite(value)
-        };
-    },
-
-    /*
-     * Extract a string out of the next sequence of characters and/or
-     * lines or return 'null' if its not possible. Since strings can
-     * span across multiple lines this method has to move the char
-     * pointer.
-     *
-     * This method recognizes pseudo-multiline JavaScript strings:
-     *
-     *   var str = "hello\
-     *   world";
-   */
-    scanStringLiteral: function (checks) {
-        /*jshint loopfunc:true */
-        var quote = this.peek();
-
-        // String must start with a quote.
-        if (quote !== "\"" && quote !== "'") {
-            return null;
-        }
-
-        // In JSON strings must always use double quotes.
-        this.triggerAsync("warning", {
-            code: "W108",
-            line: this.line,
-            character: this.char // +1?
-        }, checks, function () { return state.jsonMode && quote !== "\""; });
-
-        var value = "";
-        var startLine = this.line;
-        var startChar = this.char;
-        var allowNewLine = false;
-
-        this.skip();
-
-        while (this.peek() !== quote) {
-            while (this.peek() === "") { // End Of Line
-
-                // If an EOL is not preceded by a backslash, show a warning
-                // and proceed like it was a legit multi-line string where
-                // author simply forgot to escape the newline symbol.
-                //
-                // Another approach is to implicitly close a string on EOL
-                // but it generates too many false positives.
-
-                if (!allowNewLine) {
-                    this.trigger("warning", {
-                        code: "W112",
-                        line: this.line,
-                        character: this.char
-                    });
-                } else {
-                    allowNewLine = false;
-
-                    // Otherwise show a warning if multistr option was not set.
-                    // For JSON, show warning no matter what.
-
-                    this.triggerAsync("warning", {
-                        code: "W043",
-                        line: this.line,
-                        character: this.char
-                    }, checks, function () { return !state.option.multistr; });
-
-                    this.triggerAsync("warning", {
-                        code: "W042",
-                        line: this.line,
-                        character: this.char
-                    }, checks, function () { return state.jsonMode && state.option.multistr; });
-                }
-
-                // If we get an EOF inside of an unclosed string, show an
-                // error and implicitly close it at the EOF point.
-
-                if (!this.nextLine()) {
-                    this.trigger("error", {
-                        code: "E029",
-                        line: startLine,
-                        character: startChar
-                    });
-
-                    return {
-                        type: Token.StringLiteral,
-                        value: value,
-                        isUnclosed: true,
-                        quote: quote
-                    };
-                }
-            }
-
-            allowNewLine = false;
-            var char = this.peek();
-            var jump = 1; // A length of a jump, after we're done
-                          // parsing this character.
-
-            if (char < " ") {
-                // Warn about a control character in a string.
-                this.trigger("warning", {
-                    code: "W113",
-                    line: this.line,
-                    character: this.char,
-                    data: [ "<non-printable>" ]
-                });
-            }
-
-            // Special treatment for some escaped characters.
-
-            if (char === "\\") {
-                this.skip();
-                char = this.peek();
-
-                switch (char) {
-                case "'":
-                    this.triggerAsync("warning", {
-                        code: "W114",
-                        line: this.line,
-                        character: this.char,
-                        data: [ "\\'" ]
-                    }, checks, function () {return state.jsonMode; });
-                    break;
-                case "b":
-                    char = "\b";
-                    break;
-                case "f":
-                    char = "\f";
-                    break;
-                case "n":
-                    char = "\n";
-                    break;
-                case "r":
-                    char = "\r";
-                    break;
-                case "t":
-                    char = "\t";
-                    break;
-                case "0":
-                    char = "\0";
-
-                    // Octal literals fail in strict mode.
-                    // Check if the number is between 00 and 07.
-                    var n = parseInt(this.peek(1), 10);
-                    this.triggerAsync("warning", {
-                        code: "W115",
-                        line: this.line,
-                        character: this.char
-                    }, checks,
-                    function () { return n >= 0 && n <= 7 && state.directive["use strict"]; });
-                    break;
-                case "u":
-                    char = String.fromCharCode(parseInt(this.input.substr(1, 4), 16));
-                    jump = 5;
-                    break;
-                case "v":
-                    this.triggerAsync("warning", {
-                        code: "W114",
-                        line: this.line,
-                        character: this.char,
-                        data: [ "\\v" ]
-                    }, checks, function () { return state.jsonMode; });
-
-                    char = "\v";
-                    break;
-                case "x":
-                    var x = parseInt(this.input.substr(1, 2), 16);
-
-                    this.triggerAsync("warning", {
-                        code: "W114",
-                        line: this.line,
-                        character: this.char,
-                        data: [ "\\x-" ]
-                    }, checks, function () { return state.jsonMode; });
-
-                    char = String.fromCharCode(x);
-                    jump = 3;
-                    break;
-                case "\\":
-                case "\"":
-                case "/":
-                    break;
-                case "":
-                    allowNewLine = true;
-                    char = "";
-                    break;
-                case "!":
-                    if (value.slice(value.length - 2) === "<") {
-                        break;
-                    }
-
-                    /*falls through */
-                default:
-                    // Weird escaping.
-                    this.trigger("warning", {
-                        code: "W044",
-                        line: this.line,
-                        character: this.char
-                    });
-                }
-            }
-
-            value += char;
-            this.skip(jump);
-        }
-
-        this.skip();
-        return {
-            type: Token.StringLiteral,
-            value: value,
-            isUnclosed: false,
-            quote: quote
-        };
-    },
-
-    /*
-     * Extract a regular expression out of the next sequence of
-     * characters and/or lines or return 'null' if its not possible.
-     *
-     * This method is platform dependent: it accepts almost any
-     * regular expression values but then tries to compile and run
-     * them using system's RegExp object. This means that there are
-     * rare edge cases where one JavaScript engine complains about
-     * your regular expression while others don't.
-     */
-    scanRegExp: function () {
-        var index = 0;
-        var length = this.input.length;
-        var char = this.peek();
-        var value = char;
-        var body = "";
-        var flags = [];
-        var malformed = false;
-        var isCharSet = false;
-        var terminated;
-
-        var scanUnexpectedChars = function () {
-            // Unexpected control character
-            if (char < " ") {
-                malformed = true;
-                this.trigger("warning", {
-                    code: "W048",
-                    line: this.line,
-                    character: this.char
-                });
-            }
-
-            // Unexpected escaped character
-            if (char === "<") {
-                malformed = true;
-                this.trigger("warning", {
-                    code: "W049",
-                    line: this.line,
-                    character: this.char,
-                    data: [ char ]
-                });
-            }
-        }.bind(this);
-
-        // Regular expressions must start with '/'
-        if (!this.prereg || char !== "/") {
-            return null;
-        }
-
-        index += 1;
-        terminated = false;
-
-        // Try to get everything in between slashes. A couple of
-        // cases aside (see scanUnexpectedChars) we don't really
-        // care whether the resulting expression is valid or not.
-        // We will check that later using the RegExp object.
-
-        while (index < length) {
-            char = this.peek(index);
-            value += char;
-            body += char;
-
-            if (isCharSet) {
-                if (char === "]") {
-                    if (this.peek(index - 1) !== "\\" || this.peek(index - 2) === "\\") {
-                        isCharSet = false;
-                    }
-                }
-
-                if (char === "\\") {
-                    index += 1;
-                    char = this.peek(index);
-                    body += char;
-                    value += char;
-
-                    scanUnexpectedChars();
-                }
-
-                index += 1;
-                continue;
-            }
-
-            if (char === "\\") {
-                index += 1;
-                char = this.peek(index);
-                body += char;
-                value += char;
-
-                scanUnexpectedChars();
-
-                if (char === "/") {
-                    index += 1;
-                    continue;
-                }
-
-                if (char === "[") {
-                    index += 1;
-                    continue;
-                }
-            }
-
-            if (char === "[") {
-                isCharSet = true;
-                index += 1;
-                continue;
-            }
-
-            if (char === "/") {
-                body = body.substr(0, body.length - 1);
-                terminated = true;
-                index += 1;
-                break;
-            }
-
-            index += 1;
-        }
-
-        // A regular expression that was never closed is an
-        // error from which we cannot recover.
-
-        if (!terminated) {
-            this.trigger("error", {
-                code: "E015",
-                line: this.line,
-                character: this.from
-            });
-
-            return void this.trigger("fatal", {
-                line: this.line,
-                from: this.from
-            });
-        }
-
-        // Parse flags (if any).
-
-        while (index < length) {
-            char = this.peek(index);
-            if (!/[gim]/.test(char)) {
-                break;
-            }
-            flags.push(char);
-            value += char;
-            index += 1;
-        }
-
-        // Check regular expression for correctness.
-
-        try {
-            new RegExp(body, flags.join(""));
-        } catch (err) {
-            malformed = true;
-            this.trigger("error", {
-                code: "E016",
-                line: this.line,
-                character: this.char,
-                data: [ err.message ] // Platform dependent!
-            });
-        }
-
-        return {
-            type: Token.RegExp,
-            value: value,
-            flags: flags,
-            isMalformed: malformed
-        };
-    },
-
-    /*
-     * Scan for any occurence of mixed tabs and spaces. If smarttabs option
-     * is on, ignore tabs followed by spaces.
-     *
-     * Tabs followed by one space followed by a block comment are allowed.
-     */
-    scanMixedSpacesAndTabs: function () {
-        var at, match;
-
-        if (state.option.smarttabs) {
-            // Negative look-behind for "//"
-            match = this.input.match(/(\/\/|^\s?\*)? \t/);
-            at = match && !match[1] ? 0 : -1;
-        } else {
-            at = this.input.search(/ \t|\t [^\*]/);
-        }
-
-        return at;
-    },
-
-    /*
-     * Scan for characters that get silently deleted by one or more browsers.
-     */
-    scanUnsafeChars: function () {
-        return this.input.search(reg.unsafeChars);
-    },
-
-    /*
-     * Produce the next raw token or return 'null' if no tokens can be matched.
-     * This method skips over all space characters.
-     */
-    next: function (checks) {
-        this.from = this.char;
-
-        // Move to the next non-space character.
-        var start;
-        if (/\s/.test(this.peek())) {
-            start = this.char;
-
-            while (/\s/.test(this.peek())) {
-                this.from += 1;
-                this.skip();
-            }
-
-            if (this.peek() === "") { // EOL
-                if (!/^\s*$/.test(this.lines[this.line - 1]) && state.option.trailing) {
-                    this.trigger("warning", { code: "W102", line: this.line, character: start });
-                }
-            }
-        }
-
-        // Methods that work with multi-line structures and move the
-        // character pointer.
-
-        var match = this.scanComments() ||
-            this.scanStringLiteral(checks);
-
-        if (match) {
-            return match;
-        }
-
-        // Methods that don't move the character pointer.
-
-        match =
-            this.scanRegExp() ||
-            this.scanPunctuator() ||
-            this.scanKeyword() ||
-            this.scanIdentifier() ||
-            this.scanNumericLiteral();
-
-        if (match) {
-            this.skip(match.value.length);
-            return match;
-        }
-
-        // No token could be matched, give up.
-
-        return null;
-    },
-
-    /*
-     * Switch to the next line and reset all char pointers. Once
-     * switched, this method also checks for mixed spaces and tabs
-     * and other minor warnings.
-     */
-    nextLine: function () {
-        var char;
-
-        if (this.line >= this.lines.length) {
-            return false;
-        }
-
-        this.input = this.lines[this.line];
-        this.line += 1;
-        this.char = 1;
-        this.from = 1;
-
-        char = this.scanMixedSpacesAndTabs();
-        if (char >= 0) {
-            this.trigger("warning", { code: "W099", line: this.line, character: char + 1 });
-        }
-
-        this.input = this.input.replace(/\t/g, state.tab);
-        char = this.scanUnsafeChars();
-
-        if (char >= 0) {
-            this.trigger("warning", { code: "W100", line: this.line, character: char });
-        }
-
-        // If there is a limit on line length, warn when lines get too
-        // long.
-
-        if (state.option.maxlen && state.option.maxlen < this.input.length) {
-            this.trigger("warning", { code: "W101", line: this.line, character: this.input.length });
-        }
-
-        return true;
-    },
-
-    /*
-     * This is simply a synonym for nextLine() method with a friendlier
-     * public name.
-     */
-    start: function () {
-        this.nextLine();
-    },
-
-    /*
-     * Produce the next token. This function is called by advance() to get
-     * the next token. It retuns a token in a JSLint-compatible format.
-     */
-    token: function () {
-        /*jshint loopfunc:true */
-        var checks = asyncTrigger();
-        var token;
-
-        // Produce a token object.
-        var create = function (type, value, isProperty) {
-            /*jshint validthis:true */
-            var obj;
-
-            if (type !== "(endline)" && type !== "(end)") {
-                this.prereg = false;
-            }
-
-            if (type === "(punctuator)") {
-                switch (value) {
-                case ".":
-                case ")":
-                case "~":
-                case "#":
-                case "]":
-                    this.prereg = false;
-                    break;
-                default:
-                    this.prereg = true;
-                }
-
-                obj = Object.create(state.syntax[value] || state.syntax["(error)"]);
-            }
-
-            if (type === "(identifier)") {
-                if (value === "return" || value === "case" || value === "typeof") {
-                    this.prereg = true;
-                }
-
-                if (_.has(state.syntax, value)) {
-                    obj = Object.create(state.syntax[value] || state.syntax["(error)"]);
-                }
-            }
-
-            if (!obj) {
-                obj = Object.create(state.syntax[type]);
-            }
-
-            obj.identifier = (type === "(identifier)");
-            obj.type = obj.type || type;
-            obj.value = value;
-            obj.line = this.line;
-            obj.character = this.char;
-            obj.from = this.from;
-
-            if (isProperty && obj.identifier) {
-                obj.isProperty = isProperty;
-            }
-
-            obj.check = checks.check;
-
-            return obj;
-        }.bind(this);
-
-        for (;;) {
-            if (!this.input.length) {
-                return create(this.nextLine() ? "(endline)" : "(end)", "");
-            }
-
-            token = this.next(checks);
-
-            if (!token) {
-                if (this.input.length) {
-                    // Unexpected character.
-                    this.trigger("error", {
-                        code: "E024",
-                        line: this.line,
-                        character: this.char,
-                        data: [ this.peek() ]
-                    });
-
-                    this.input = "";
-                }
-
-                continue;
-            }
-
-            switch (token.type) {
-            case Token.StringLiteral:
-                this.triggerAsync("String", {
-                    line: this.line,
-                    char: this.char,
-                    from: this.from,
-                    value: token.value,
-                    quote: token.quote
-                }, checks, function () { return true; });
-
-                return create("(string)", token.value);
-            case Token.Identifier:
-                this.trigger("Identifier", {
-                    line: this.line,
-                    char: this.char,
-                    from: this.form,
-                    name: token.value,
-                    isProperty: state.tokens.curr.id === "."
-                });
-
-                /* falls through */
-            case Token.Keyword:
-            case Token.NullLiteral:
-            case Token.BooleanLiteral:
-                return create("(identifier)", token.value, state.tokens.curr.id === ".");
-
-            case Token.NumericLiteral:
-                if (token.isMalformed) {
-                    this.trigger("warning", {
-                        code: "W045",
-                        line: this.line,
-                        character: this.char,
-                        data: [ token.value ]
-                    });
-                }
-
-                this.triggerAsync("warning", {
-                    code: "W114",
-                    line: this.line,
-                    character: this.char,
-                    data: [ "0x-" ]
-                }, checks, function () { return token.base === 16 && state.jsonMode; });
-
-                this.triggerAsync("warning", {
-                    code: "W115",
-                    line: this.line,
-                    character: this.char
-                }, checks, function () {
-                    return state.directive["use strict"] && token.base === 8;
-                });
-
-                this.trigger("Number", {
-                    line: this.line,
-                    char: this.char,
-                    from: this.from,
-                    value: token.value,
-                    base: token.base,
-                    isMalformed: token.malformed
-                });
-
-                return create("(number)", token.value);
-
-            case Token.RegExp:
-                return create("(regexp)", token.value);
-
-            case Token.Comment:
-                state.tokens.curr.comment = true;
-
-                if (token.isSpecial) {
-                    return {
-                        value: token.value,
-                        body: token.body,
-                        type: token.commentType,
-                        isSpecial: token.isSpecial,
-                        line: this.line,
-                        character: this.char,
-                        from: this.from
-                    };
-                }
-
-                break;
-
-            case "":
-                break;
-
-            default:
-                return create("(punctuator)", token.value);
-            }
-        }
-    }
-};
-
-exports.Lexer = Lexer;
-
-})()
-},{"events":2,"./state.js":6,"./reg.js":4,"underscore":9}],14:[function(require,module,exports){
+},{}],14:[function(require,module,exports){
 exports.readIEEE754 = function(buffer, offset, isBE, mLen, nBytes) {
   var e, m,
       eLen = nBytes * 8 - mLen - 1,
@@ -10861,7 +10892,7 @@ SlowBuffer.prototype.writeDoubleLE = Buffer.prototype.writeDoubleLE;
 SlowBuffer.prototype.writeDoubleBE = Buffer.prototype.writeDoubleBE;
 
 })()
-},{"assert":12,"./buffer_ieee754":14,"base64-js":15}],15:[function(require,module,exports){
+},{"assert":9,"./buffer_ieee754":14,"base64-js":15}],15:[function(require,module,exports){
 (function (exports) {
     'use strict';
 
