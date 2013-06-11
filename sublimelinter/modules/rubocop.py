@@ -23,14 +23,7 @@ class Linter(BaseLinter):
 
                 if error_type == 'W' or error_type == 'C':
                     messages = warningMessages
-                    underlines = warningUnderlines
                 else:
                     messages = errorMessages
-                    underlines = errorUnderlines
 
                 self.add_message(line, lines, error, messages)
-
-                # Rubocop does not return the column so I could remove this line
-                # I decided to put an underscore at column 0 because sometimes
-                # the gutter can colide with other plugins.
-                self.underline_range(view, line, 0, underlines)
