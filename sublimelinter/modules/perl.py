@@ -35,7 +35,8 @@ class Linter(BaseLinter):
         if self.linter == 'perl':
             return ['-c']
         else:
-            return ['--verbose', '8']
+            linter_severity = '--' + view.settings().get('perl_linter_severity', 'gentle')
+            return [linter_severity, '--verbose', '8']
 
     def parse_errors(self, view, errors, lines, errorUnderlines, violationUnderlines, warningUnderlines, errorMessages, violationMessages, warningMessages):
         for line in errors.splitlines():

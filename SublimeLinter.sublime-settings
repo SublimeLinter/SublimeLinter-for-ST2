@@ -224,6 +224,15 @@
     */
     "perl_linter": "perlcritic",
 
+    /*
+        When using perlcritic for Perl linting, the default severity is 5 (gentle).
+        You can specify other levels here. See perlcritic(1) for more information.
+        This setting is ignored when not using perlcritic.
+
+        Available levels: brutal, cruel, harsh, stern, gentle (default)
+    */
+    "perl_linter_severity": "gentle",
+
     // Objective-J: if true, non-ascii characters are flagged as an error.
     "sublimelinter_objj_check_ascii": false,
 

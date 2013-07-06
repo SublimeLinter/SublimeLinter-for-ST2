@@ -59,6 +59,7 @@ ALL_SETTINGS = [
     'pep8',
     'pep8_ignore',
     'perl_linter',
+    'perl_linter_severity',
     'pyflakes_ignore',
     'pyflakes_ignore_import_*',
     'sublimelinter',
