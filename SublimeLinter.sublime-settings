@@ -111,7 +111,7 @@
     // or either "jshint" or "jslint" to use a built in linter.
     "javascript_linter": "jshint",
 
-    // jshint: options for linting JavaScript. See http://www.jshint.com/options/ for more info.
+    // jshint: options for linting JavaScript. See http://www.jshint.com/docs/#options for more info.
     // By deault, eval is allowed.
     "jshint_options":
     {
