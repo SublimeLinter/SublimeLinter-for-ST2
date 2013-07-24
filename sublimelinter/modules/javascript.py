@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
-# javascript.py - sublimelint package for checking JavaScript files
+# javascript.py - sublimelint package for checking Javascript files
 
 import json
 import re
 import subprocess
 
-from .base_linter import BaseLinter, INPUT_METHOD_TEMP_FILE
+from .base_linter import BaseLinter, INPUT_METHOD_TEMP_FILE, INPUT_METHOD_STDIN
 
 CONFIG = {
     'language': 'JavaScript'
@@ -19,10 +19,18 @@ class Linter(BaseLinter):
         super(Linter, self).__init__(config)
         self.linter = None
 
-    def get_executable(self, view):
-        self.linter = view.settings().get('javascript_linter', 'jshint')
+    def get_executable(self, view, linterName=''):
+
+        if (linterName == ''):
+            self.linter = view.settings().get('javascript_linter', 'jshint')
+            self.linter = self.linter.split(',')[0]
+        else:
+            self.linter = linterName
+
+        self.linter = self.linter.strip()
 
         if (self.linter in ('jshint', 'jslint')):
+            self.input_method = INPUT_METHOD_STDIN
             return self.get_javascript_engine(view)
         elif (self.linter == 'gjslint'):
             try:
@@ -51,7 +59,7 @@ class Linter(BaseLinter):
         if self.linter == 'jshint':
             rc_options = self.find_file('.jshintrc', view)
 
-            if rc_options != None:
+            if rc_options is not None:
                 rc_options = self.strip_json_comments(rc_options)
                 return json.dumps(json.loads(rc_options))
 
@@ -78,3 +86,51 @@ class Linter(BaseLinter):
                 lineno = error['line']
                 self.add_message(lineno, lines, error['reason'], errorMessages)
                 self.underline_range(view, lineno, error['character'] - 1, errorUnderlines)
+
+    def run(self, view, code, filename=None):
+        self.filename = filename
+
+        all_lines = set()
+        all_errorUnderlines = []  # leave this here for compatibility with original plugin
+        all_errorMessages = {}
+        all_violationUnderlines = []
+        all_violationMessages = {}
+        all_warningUnderlines = []
+        all_warningMessages = {}
+
+        try:
+            linters = view.settings().get('javascript_linter', 'jshint')
+            linters = linters.split(',')
+
+            for linter in linters:
+                self.enabled, self.executable, message = self.get_executable(view, linter)
+
+                if self.enabled:
+                    if self.executable is None:
+                        errors = self.built_in_check(view, code, filename)
+                    else:
+                        errors = self.executable_check(view, code, filename)
+
+                    # Parse errors
+                    lines = set()
+                    errorUnderlines = []
+                    errorMessages = {}
+                    violationUnderlines = []
+                    violationMessages = {}
+                    warningUnderlines = []
+                    warningMessages = {}
+                    self.parse_errors(view, errors, lines, errorUnderlines, violationUnderlines, warningUnderlines, errorMessages, violationMessages, warningMessages)
+
+                    #Merge errors
+                    all_lines = all_lines.union(lines)
+                    all_errorUnderlines += errorUnderlines
+                    all_errorMessages.update(errorMessages)
+                    all_violationUnderlines += violationUnderlines
+                    all_violationMessages.update(violationMessages)
+                    all_warningUnderlines += warningUnderlines
+                    all_warningMessages.update(warningMessages)
+
+        except Exception as ex:
+            print('javascript.py run() Exception=' + str(ex, 'utf-8'))
+
+        return all_lines, all_errorUnderlines, all_violationUnderlines, all_warningUnderlines, all_errorMessages, all_violationMessages, all_warningMessages
