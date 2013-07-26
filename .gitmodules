@@ -1,0 +1,3 @@
+[submodule "sublimelinter/modules/libs/eslint/eslint"]
+	path = sublimelinter/modules/libs/eslint/eslint
+	url = git@github.com:nzakas/eslint
