@@ -66,10 +66,9 @@
     "sublimelinter_delay": 2,
 
     /*
-        Selects the way the lines with errors or warnings are marked; "outline"
-        (default) draws outline boxes around the lines, "fill" fills the lines
-        with the outline color, and "none" disables all outline styles
-        (useful if "sublimelinter_gutter_marks" is set).
+        Selects the way the lines with errors or warnings are marked; "outline" draws
+        outline boxes around the lines, "fill" fills the lines with the outline color,
+        and "none" (default) disables all outline styles.
     */
     "sublimelinter_mark_style": "none",
 
