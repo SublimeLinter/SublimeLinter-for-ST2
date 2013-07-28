@@ -662,16 +662,6 @@ def reload_settings(view):
         view.settings().set('sublimelinter', True)
 
 
-def icon_path(self, icon_name):
-    if int(sublime.version()) < 3014:
-        path = '..'
-        extn = ''
-    else:
-        path = 'Packages'
-        extn = '.png'
-    return path + '/VCS Gutter/icons/' + icon_name + extn
-
-
 class LintCommand(sublime_plugin.TextCommand):
     '''command to interact with linters'''
 
