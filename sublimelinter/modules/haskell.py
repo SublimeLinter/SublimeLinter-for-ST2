@@ -1,5 +1,5 @@
 import re
-from base_linter import BaseLinter, INPUT_METHOD_FILE
+from .base_linter import BaseLinter, INPUT_METHOD_FILE
 
 
 CONFIG = {
