@@ -47,7 +47,7 @@ else:
     EXTN = '.png'
 
 # The path to the built-in gutter mark themes
-MARK_THEMES_PATH = os.path.join(path, 'SublimeLinter', 'gutter_mark_themes')
+MARK_THEMES_PATH = os.path.join(PATH, 'SublimeLinter', 'gutter_mark_themes')
 # The original theme for anyone interested the previous minimalist approach
 ORIGINAL_MARK_THEME = {
     'violation': 'dot',
