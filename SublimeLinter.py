@@ -38,8 +38,16 @@ DELAYS = (
 # Select one of the predefined gutter mark themes, the options are:
 # "alpha", "bright", "dark", "hard" and "simple"
 MARK_THEMES = ('alpha', 'bright', 'dark', 'hard', 'simple')
+
+if int(sublime.version()) < 3014:
+    PATH = '..'
+    EXTN = ''
+else:
+    PATH = 'Packages'
+    EXTN = '.png'
+
 # The path to the built-in gutter mark themes
-MARK_THEMES_PATH = os.path.join('..', 'SublimeLinter', 'gutter_mark_themes')
+MARK_THEMES_PATH = os.path.join(path, 'SublimeLinter', 'gutter_mark_themes')
 # The original theme for anyone interested the previous minimalist approach
 ORIGINAL_MARK_THEME = {
     'violation': 'dot',
@@ -258,9 +266,9 @@ def add_lint_marks(view, lines, error_underlines, violation_underlines, warning_
                     if gutter_mark_theme == 'original':
                         gutter_mark_image = ORIGINAL_MARK_THEME[lint_type]
                     elif gutter_mark_theme in MARK_THEMES:
-                        gutter_mark_image = os.path.join(MARK_THEMES_PATH, gutter_mark_theme + '-' + lint_type)
+                        gutter_mark_image = os.path.join(MARK_THEMES_PATH, gutter_mark_theme + '-' + lint_type + EXTN)
                     else:
-                        gutter_mark_image = gutter_mark_theme + '-' + lint_type
+                        gutter_mark_image = gutter_mark_theme + '-' + lint_type + EXTN
 
                 args.append(gutter_mark_image)
 
