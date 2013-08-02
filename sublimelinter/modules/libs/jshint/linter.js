@@ -1,5 +1,7 @@
 /*jshint node: true */
 /*globals LINTER_PATH load */
+// Define window globally for node to prevent browserify errors
+global.window = {};
 
 var JSHINT = require("./jshint").JSHINT;
 
