@@ -121,9 +121,9 @@ class Linter(BaseLinter):
                     offset = offset - (len(text) - len(line))
 
                 if offset is not None:
-                    error = OffsetError(filename, value, msg, offset)
+                    error = OffsetError(filename, lineno, msg, offset)
                 else:
-                    error = PythonError(filename, value, msg)
+                    error = PythonError(filename, lineno, msg)
             return [error]
         except ValueError, e:
             return [PythonError(filename, 0, e.args[0])]
