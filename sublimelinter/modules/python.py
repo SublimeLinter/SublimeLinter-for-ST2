@@ -257,13 +257,13 @@ class Linter(BaseLinter):
                                     pyflakes.messages.UndefinedLocal,
                                     pyflakes.messages.Redefined,
                                     pyflakes.messages.UnusedVariable)):
-                underline_word(error.lineno, error.message, underlines)
+                underline_word(error.lineno, error.message_args[0], underlines)
 
             elif isinstance(error, pyflakes.messages.ImportShadowedByLoopVar):
-                underline_for_var(error.lineno, error.message, underlines)
+                underline_for_var(error.lineno, error.message_args[0], underlines)
 
             elif isinstance(error, pyflakes.messages.UnusedImport):
-                underline_import(error.lineno, error.message, underlines)
+                underline_import(error.lineno, error.message_args[0], underlines)
 
             elif isinstance(error, pyflakes.messages.ImportStarUsed):
                 underline_import(error.lineno, '*', underlines)
