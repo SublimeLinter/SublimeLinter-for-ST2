@@ -275,4 +275,4 @@ class Linter(BaseLinter):
                 pass
 
             else:
-                print('Oops, we missed an error type!', type(error))
+                print('Oops, we missed an error type! %s' % type(error))

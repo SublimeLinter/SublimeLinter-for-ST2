@@ -406,5 +406,5 @@ class BaseLinter(object):
             return (True, self.js_engine['path'], 'using {0}'.format(self.JAVASCRIPT_ENGINE_NAMES[self.js_engine['name']]))
 
         # Didn't find an engine, tell the user
-        engine_list = ', '.join(list(self.JAVASCRIPT_ENGINE_NAMES.values()))
+        engine_list = ', '.join(self.JAVASCRIPT_ENGINE_NAMES.values())
         return (False, '', 'One of the following JavaScript engines must be installed: ' + engine_list)

@@ -53,7 +53,7 @@ class Linter(BaseLinter):
         for point in annotation_starts:
             regions_with_notes.add(view.extract_scope(point))
 
-        regions_with_notes = sorted(list(regions_with_notes))
+        regions_with_notes = sorted(regions_with_notes)
         text = []
 
         for region in regions_with_notes:

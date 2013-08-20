@@ -98,12 +98,12 @@ class Loader(object):
 
                 lc_language = language.lower()
                 self.linters[lc_language] = linter
-                print('SublimeLinter: {0} loaded'.format(language))
+                print(u'SublimeLinter: {0} loaded'.format(language))
             else:
-                print('SublimeLinter: {0} disabled (no language specified in module)'.format(name))
+                print(u'SublimeLinter: {0} disabled (no language specified in module)'.format(name))
 
         except KeyError:
-            print('SublimeLinter: general error importing {0} ({1})'.format(name, language or '<unknown>'))
+            print(u'SublimeLinter: general error importing {0} ({1})'.format(name, language or '<unknown>'))
 
         os.chdir(pushd)
 

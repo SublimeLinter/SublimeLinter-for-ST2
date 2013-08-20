@@ -39,7 +39,7 @@ DELAYS = (
 # "alpha", "bright", "dark", "hard" and "simple"
 MARK_THEMES = ('alpha', 'bright', 'dark', 'hard', 'simple')
 # The path to the built-in gutter mark themes
-MARK_THEMES_PATH = os.path.join('..', 'SublimeLinter', 'gutter_mark_themes')
+MARK_THEMES_PATH = os.path.join('Packages', 'SublimeLinter', 'gutter_mark_themes')
 # The original theme for anyone interested the previous minimalist approach
 ORIGINAL_MARK_THEME = {
     'violation': 'dot',
@@ -165,7 +165,7 @@ def popup_error_list(view):
     errors = ERRORS[vid].copy()
 
     for message_map in [VIOLATIONS[vid], WARNINGS[vid]]:
-        for line, messages in list(message_map.items()):
+        for line, messages in message_map.items():
             if line in errors:
                 errors[line].extend(messages)
             else:
@@ -217,7 +217,7 @@ def add_lint_marks(view, lines, error_underlines, violation_underlines, warning_
     erase_lint_marks(view)
     types = {'warning': warning_underlines, 'violation': violation_underlines, 'illegal': error_underlines}
 
-    for type_name, underlines in list(types.items()):
+    for type_name, underlines in types.items():
         if underlines:
             view.add_regions('lint-underline-' + type_name, underlines, 'sublimelinter.underline.' + type_name, flags=sublime.DRAW_EMPTY_AS_OVERWRITE)
 
@@ -261,6 +261,7 @@ def add_lint_marks(view, lines, error_underlines, violation_underlines, warning_
                         gutter_mark_image = os.path.join(MARK_THEMES_PATH, gutter_mark_theme + '-' + lint_type)
                     else:
                         gutter_mark_image = gutter_mark_theme + '-' + lint_type
+                    gutter_mark_image += '.png'
 
                 args.append(gutter_mark_image)
 
@@ -628,11 +629,11 @@ def lint_views(linter):
 
 
 def reload_view_module(view):
-    for name, linter in list(LINTERS.items()):
+    for name, linter in LINTERS.items():
         module = sys.modules[linter.__module__]
 
         if module.__file__ == view.file_name():
-            print('SublimeLinter: reloading language:', linter.language)
+            print('SublimeLinter: reloading language: {}'.format(linter.language))
             MOD_LOAD.reload_module(module)
             lint_views(linter)
             break

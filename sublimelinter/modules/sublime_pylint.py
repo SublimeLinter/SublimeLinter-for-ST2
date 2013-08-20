@@ -1,4 +1,13 @@
-from io import StringIO
+''' sublime_pylint.py - sublimelint package for checking python files
+
+pylint is not available as a checker that runs in the background
+as it generally takes much too long.
+'''
+
+try:
+    from StringIO import StringIO
+except ImportError:
+    from io import StringIO
 import tempfile
 
 try:

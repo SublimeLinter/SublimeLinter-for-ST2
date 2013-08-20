@@ -1,3 +1,6 @@
+# -*- coding: utf-8 -*-
+# git_commit_message.py - sublimelint package for checking Git commit messages
+
 from .base_linter import BaseLinter
 
 
