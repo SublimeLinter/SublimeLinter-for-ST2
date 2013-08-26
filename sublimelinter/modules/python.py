@@ -55,9 +55,19 @@ CONFIG = {
 }
 
 
+class Hack(object):
+    def __init__(self, i):
+        self.lineno = i
+
+    def __int__(self):
+        return int(self.lineno)
+
+
 class PythonLintError(pyflakes.messages.Message):
 
     def __init__(self, filename, loc, level, message, message_args, offset=None, text=None):
+        if isinstance(loc, int):
+            loc = Hack(loc)
         super(PythonLintError, self).__init__(filename, loc)
         self.level = level
         self.message = message
