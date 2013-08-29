@@ -184,10 +184,7 @@ class Linter(BaseLinter):
             if not good_lines[-1]:
                 good_lines = good_lines[:-1]
 
-            try:
-                pep8.Checker(filename, good_lines, options).check_all()
-            except Exception, e:
-                print "An exception occured when running pep8 checker: %s" % e
+            pep8.Checker(filename, good_lines, options).check_all()
 
         return messages
 
