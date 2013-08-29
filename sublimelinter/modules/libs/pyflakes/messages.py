@@ -9,7 +9,7 @@ class Message(object):
 
     def __init__(self, filename, loc):
         self.filename = filename
-        self.lineno = loc.lineno
+        self.lineno = getattr(loc, 'lineno', loc)
         self.col = getattr(loc, 'col_offset', 0)
 
     def __str__(self):
