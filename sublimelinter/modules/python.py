@@ -3,7 +3,7 @@
 # It provides a list of line numbers to outline and offsets to highlight.
 #
 # This specific module is part of the SublimeLinter project.
-# It is a fork by André Roberge from the original SublimeLint project,
+# It is a fork by Andre Roberge from the original SublimeLint project,
 # (c) 2011 Ryan Hileman and licensed under the MIT license.
 # URL: http://bochs.info/
 #
@@ -38,12 +38,14 @@
 
 # TODO:
 # * fix regex for variable names inside strings (quotes)
-
+import os
+import pickle
 import re
-import _ast
+import subprocess
 
 import pep8
 import pyflakes.checker as pyflakes
+from python_extra import Pep8Error, Pep8Warning, OffsetError
 
 from base_linter import BaseLinter
 
@@ -54,91 +56,44 @@ CONFIG = {
 }
 
 
-class PythonLintError(pyflakes.messages.Message):
-
-    def __init__(self, filename, loc, level, message, message_args, offset=None, text=None):
-        super(PythonLintError, self).__init__(filename, loc)
-        self.level = level
-        self.message = message
-        self.message_args = message_args
-        if offset is not None:
-            self.offset = offset
-        if text is not None:
-            self.text = text
-
-
-class Pep8Error(PythonLintError):
-
-    def __init__(self, filename, loc, offset, code, text):
-        # PEP 8 Errors are downgraded to "warnings"
-        super(Pep8Error, self).__init__(filename, loc, 'W', '[W] PEP 8 (%s): %s', (code, text),
-                                        offset=offset, text=text)
-
-
-class Pep8Warning(PythonLintError):
-
-    def __init__(self, filename, loc, offset, code, text):
-        # PEP 8 Warnings are downgraded to "violations"
-        super(Pep8Warning, self).__init__(filename, loc, 'V', '[V] PEP 8 (%s): %s', (code, text),
-                                          offset=offset, text=text)
-
-
-class OffsetError(PythonLintError):
-
-    def __init__(self, filename, loc, text, offset):
-        super(OffsetError, self).__init__(filename, loc, 'E', '[E] %r', (text,), offset=offset + 1, text=text)
-
-
-class PythonError(PythonLintError):
-
-    def __init__(self, filename, loc, text):
-        super(PythonError, self).__init__(filename, loc, 'E', '[E] %r', (text,), text=text)
-
-
 class Linter(BaseLinter):
     def pyflakes_check(self, code, filename, ignore=None):
-        try:
-            tree = compile(code, filename, "exec", _ast.PyCF_ONLY_AST)
-        except (SyntaxError, IndentationError), value:
-            msg = value.args[0]
+        args = '/usr/local/Frameworks/Python.framework/Versions/2.7/bin/python'
 
-            (lineno, offset, text) = value.lineno, value.offset, value.text
+        process = subprocess.Popen(args,
+                                   stdin=subprocess.PIPE,
+                                   stdout=subprocess.PIPE,
+                                   stderr=subprocess.STDOUT,
+                                   startupinfo=self.get_startupinfo())
 
-            # If there's an encoding problem with the file, the text is None.
-            if text is None:
-                # Avoid using msg, since for the only known case, it contains a
-                # bogus message that claims the encoding the file declared was
-                # unknown.
-                if msg.startswith('duplicate argument'):
-                    arg = msg.split('duplicate argument ', 1)[1].split(' ', 1)[0].strip('\'"')
-                    error = pyflakes.messages.DuplicateArgument(filename, value, arg)
-                else:
-                    error = PythonError(filename, value, msg)
-            else:
-                line = text.splitlines()[-1]
+        escaped = code.replace('\\', '\\\\').replace('"', '\\"')
 
-                if offset is not None:
-                    offset = offset - (len(text) - len(line))
+        relative = os.path.join(__file__, '../../..')
+        linter_folder = os.path.abspath(relative)
 
-                if offset is not None:
-                    error = OffsetError(filename, value, msg, offset)
-                else:
-                    error = PythonError(filename, value, msg)
-            return [error]
-        except ValueError, e:
-            return [PythonError(filename, 0, e.args[0])]
-        else:
-            # Okay, it's syntactically valid.  Now check it.
-            if ignore is not None:
-                old_magic_globals = pyflakes._MAGIC_GLOBALS
-                pyflakes._MAGIC_GLOBALS += ignore
+        to_send = """
+import pickle
+import sys
 
-            w = pyflakes.Checker(tree, filename)
+linter_folder = '"""+linter_folder+"""'
+sys.path.append(linter_folder)
+sys.path.append(linter_folder+'/sublimelinter/modules/libs')
 
-            if ignore is not None:
-                pyflakes._MAGIC_GLOBALS = old_magic_globals
+from sublimelinter.modules.python_extra import PythonLintError, OffsetError, external_pyflakes_check
+import pyflakes.checker as pyflakes
 
-            return w.messages
+code = \"\"\"""" + escaped + """\"\"\"
+filename = '""" + filename + """'
+
+result = external_pyflakes_check(code, filename)
+# print result
+print pickle.dumps(result)
+"""
+        process.stdin.write(to_send)
+        result = process.communicate()[0]
+
+        w = pickle.loads(result)
+        return w
 
     def pep8_check(self, code, filename, ignore=None):
         messages = []
