@@ -67,20 +67,32 @@ class Linter(BaseLinter):
                                    stderr=subprocess.STDOUT,
                                    startupinfo=self.get_startupinfo())
 
+        wrapper_code = self.get_wrapper_code(self.paths, code, filename, ignore)
+        result = process.communicate(input=wrapper_code)[0]
+        return pickle.loads(result)
+
+    @property
+    def paths(self):
+        """
+        Need top-level folder for the import of pyflakes_check in
+        the wrapper code. This is done instead of the modules folder
+        so that OffSetError and PythonError have the same namespacing
+        as in python.py when unpickling.
+
+        Libs folder needed for import of pyflakes.checker in
+        python_extra.py.
+        """
         linter_folder = path.abspath(path.join(__file__, '../../..'))
         libs_folder = linter_folder + '/sublimelinter/modules/libs'
-        paths = [linter_folder, libs_folder]
+        return [linter_folder, libs_folder]
 
-        to_send = """
+    def get_wrapper_code(self, paths, code, filename, ignore):
+        return """
 import pickle
 import sys
 
 paths = """ + repr(paths) + """
 sys.path.extend(paths)
-
-# Need to import from the top level module like this so that
-# OffSetError and PythonError the same namespacing as in
-# python.py when unpickling.
 from sublimelinter.modules.python_extra import pyflakes_check
 
 code = """ + repr(code) + """
@@ -89,13 +101,10 @@ ignore = """ + repr(ignore) + """
 
 result = pyflakes_check(code, filename, ignore)
 
-# Using stdout for clarity but keep in mind any print
+# Using stdout for clarity but any print
 # statements would also go to the output.
 sys.stdout.write(pickle.dumps(result))
 """
-        result = process.communicate(input=to_send)[0]
-        errors = pickle.loads(result)
-        return errors
 
     def pep8_check(self, code, filename, ignore=None):
         messages = []
