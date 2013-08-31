@@ -215,6 +215,18 @@
         set this option to false.
     */
     "pyflakes_ignore_import_*": true,
+    /*
+        When checking for code that wouldn't compile (basic syntax errors, etc), by default
+        SublimeLinter uses Sublime Text's internal Python, which is currently version 2.6. Because
+        of this, 2.7+ features like dict comprehensions will be flagged as a syntax error and also
+        prevent pyflakes from running. Specifying a path below will use that version of Python to
+        check for syntax errors and then call pyflakes.
+
+        E.g. for a homebrew install on OSX:
+
+        "python_path": "/usr/local/Frameworks/Python.framework/Versions/2.7/bin/python",
+    */
+    "python_path": "",
 
     /*
         Perl linter: "perl" to use the Perl language syntax check, or "perlcritic" to use Perl::Critic linting.

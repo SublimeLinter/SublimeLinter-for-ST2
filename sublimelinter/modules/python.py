@@ -45,7 +45,7 @@ import subprocess
 
 import pep8
 import pyflakes.checker as pyflakes
-from python_extra import Pep8Error, Pep8Warning, OffsetError
+from python_extra import Pep8Error, Pep8Warning, OffsetError, pyflakes_check
 
 from base_linter import BaseLinter
 
@@ -57,10 +57,13 @@ CONFIG = {
 
 
 class Linter(BaseLinter):
-    def pyflakes_check(self, code, filename, ignore=None):
-        args = '/usr/local/Frameworks/Python.framework/Versions/2.7/bin/python'
+    def pyflakes_builtin_check(self, code, filename, ignore=None):
+        # print 'builtin checker'
+        return pyflakes_check(code, filename, ignore)
 
-        process = subprocess.Popen(args,
+    def pyflakes_external_check(self, code, filename, ignore=None):
+        # print 'external checker'
+        process = subprocess.Popen(self.python_path,
                                    stdin=subprocess.PIPE,
                                    stdout=subprocess.PIPE,
                                    stderr=subprocess.STDOUT,
@@ -79,13 +82,14 @@ linter_folder = '"""+linter_folder+"""'
 sys.path.append(linter_folder)
 sys.path.append(linter_folder+'/sublimelinter/modules/libs')
 
-from sublimelinter.modules.python_extra import PythonLintError, OffsetError, external_pyflakes_check
+from sublimelinter.modules.python_extra import PythonLintError, OffsetError, pyflakes_check
 import pyflakes.checker as pyflakes
 
 code = \"\"\"""" + escaped + """\"\"\"
 filename = '""" + filename + """'
+ignore = """ + str(ignore) + """
 
-result = external_pyflakes_check(code, filename)
+result = pyflakes_check(code, filename, ignore)
 # print result
 print pickle.dumps(result)
 """
@@ -147,6 +151,7 @@ print pickle.dumps(result)
         return messages
 
     def built_in_check(self, view, code, filename):
+        self.python_path = view.settings().get('python_path', None)
         errors = []
 
         if view.settings().get("pep8", True):
@@ -156,7 +161,8 @@ print pickle.dumps(result)
         pyflakes_disabled = view.settings().get('pyflakes_disabled', False)
 
         if not pyflakes_disabled:
-            errors.extend(self.pyflakes_check(code, filename, pyflakes_ignore))
+            checker = self.pyflakes_external_check if self.python_path else self.pyflakes_builtin_check
+            errors.extend(checker(code, filename, pyflakes_ignore))
 
         return errors
 

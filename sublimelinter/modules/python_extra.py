@@ -42,7 +42,7 @@ class PythonError(PythonLintError):
         super(PythonError, self).__init__(filename, loc, 'E', '[E] %r', (text,), text=text)
 
 
-def external_pyflakes_check(code, filename, ignore=None):
+def pyflakes_check(code, filename, ignore=None):
     try:
         tree = compile(code, filename, "exec", _ast.PyCF_ONLY_AST)
         w = pyflakes.Checker(tree, filename)
