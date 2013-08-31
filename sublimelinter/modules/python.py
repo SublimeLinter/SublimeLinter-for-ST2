@@ -3,7 +3,7 @@
 # It provides a list of line numbers to outline and offsets to highlight.
 #
 # This specific module is part of the SublimeLinter project.
-# It is a fork by Andre Roberge from the original SublimeLint project,
+# It is a fork by André Roberge from the original SublimeLint project,
 # (c) 2011 Ryan Hileman and licensed under the MIT license.
 # URL: http://bochs.info/
 #
@@ -38,7 +38,7 @@
 
 # TODO:
 # * fix regex for variable names inside strings (quotes)
-import os
+from os import path
 import pickle
 import re
 import subprocess
@@ -58,46 +58,44 @@ CONFIG = {
 
 class Linter(BaseLinter):
     def pyflakes_builtin_check(self, code, filename, ignore=None):
-        # print 'builtin checker'
         return pyflakes_check(code, filename, ignore)
 
     def pyflakes_external_check(self, code, filename, ignore=None):
-        # print 'external checker'
         process = subprocess.Popen(self.python_path,
                                    stdin=subprocess.PIPE,
                                    stdout=subprocess.PIPE,
                                    stderr=subprocess.STDOUT,
                                    startupinfo=self.get_startupinfo())
 
-        escaped = code.replace('\\', '\\\\').replace('"', '\\"')
-
-        relative = os.path.join(__file__, '../../..')
-        linter_folder = os.path.abspath(relative)
+        linter_folder = path.abspath(path.join(__file__, '../../..'))
+        libs_folder = linter_folder + '/sublimelinter/modules/libs'
+        paths = [linter_folder, libs_folder]
 
         to_send = """
 import pickle
 import sys
 
-linter_folder = '"""+linter_folder+"""'
-sys.path.append(linter_folder)
-sys.path.append(linter_folder+'/sublimelinter/modules/libs')
+paths = """ + repr(paths) + """
+sys.path.extend(paths)
 
-from sublimelinter.modules.python_extra import PythonLintError, OffsetError, pyflakes_check
-import pyflakes.checker as pyflakes
+# Need to import from the top level module like this so that
+# OffSetError and PythonError the same namespacing as in
+# python.py when unpickling.
+from sublimelinter.modules.python_extra import pyflakes_check
 
-code = \"\"\"""" + escaped + """\"\"\"
-filename = '""" + filename + """'
-ignore = """ + str(ignore) + """
+code = """ + repr(code) + """
+filename = """ + repr(filename) + """
+ignore = """ + repr(ignore) + """
 
 result = pyflakes_check(code, filename, ignore)
-# print result
-print pickle.dumps(result)
-"""
-        process.stdin.write(to_send)
-        result = process.communicate()[0]
 
-        w = pickle.loads(result)
-        return w
+# Using stdout for clarity but keep in mind any print
+# statements would also go to the output.
+sys.stdout.write(pickle.dumps(result))
+"""
+        result = process.communicate(input=to_send)[0]
+        errors = pickle.loads(result)
+        return errors
 
     def pep8_check(self, code, filename, ignore=None):
         messages = []
