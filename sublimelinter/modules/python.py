@@ -84,9 +84,13 @@ class Linter(BaseLinter):
         Libs folder needed for import of pyflakes.checker in
         python_extra.py.
         """
-        linter_folder = path.abspath(path.join(__file__, '../../..'))
-        libs_folder = path.abspath(linter_folder + '/sublimelinter/modules/libs')
-        return [linter_folder, libs_folder]
+        norm_join = lambda *args: path.normpath(path.join(*args))
+        up_dirs = lambda times: path.join(*([path.pardir] * times))
+        module_dir = path.dirname(path.abspath(__file__))
+
+        linter_dir = norm_join(module_dir, up_dirs(2))
+        libs_dir = norm_join(module_dir, 'libs')
+        return [linter_dir, libs_dir]
 
     def get_wrapper_code(self, paths, code, filename, ignore):
         return """
