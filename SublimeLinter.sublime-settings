@@ -223,8 +223,11 @@
         check for syntax errors and then call pyflakes.
 
         E.g. for a homebrew install on OSX:
-
         "python_path": "/usr/local/Frameworks/Python.framework/Versions/2.7/bin/python",
+
+        Or the default on Windows:
+        "python_path": "c:\\Python27\\python.exe",
+
     */
     "python_path": "",
 

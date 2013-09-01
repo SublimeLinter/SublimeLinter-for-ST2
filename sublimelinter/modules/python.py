@@ -69,6 +69,8 @@ class Linter(BaseLinter):
 
         wrapper_code = self.get_wrapper_code(self.paths, code, filename, ignore)
         result = process.communicate(input=wrapper_code)[0]
+        # Pickle chokes on CRs in pickled format, which get added to stdout on Win
+        result = result.replace('\r\n', '\n')
         return pickle.loads(result)
 
     @property
@@ -83,7 +85,7 @@ class Linter(BaseLinter):
         python_extra.py.
         """
         linter_folder = path.abspath(path.join(__file__, '../../..'))
-        libs_folder = linter_folder + '/sublimelinter/modules/libs'
+        libs_folder = path.abspath(linter_folder + '/sublimelinter/modules/libs')
         return [linter_folder, libs_folder]
 
     def get_wrapper_code(self, paths, code, filename, ignore):
