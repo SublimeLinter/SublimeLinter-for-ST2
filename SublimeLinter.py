@@ -651,30 +651,36 @@ def settings_changed():
 
 
 def load_settings():
-    userSettings = sublime.load_settings("Preferences.sublime-settings")
     settings = sublime.load_settings(SETTINGS_NAME + '.sublime-settings')
-    return userSettings, settings
+    return settings
 
 
 def plugin_loaded():
-    userSettings, settings = load_settings()
+    settings = load_settings()
     settings.add_on_change(SETTINGS_NAME, settings_changed)
+
+    userSettings = sublime.load_settings("Preferences.sublime-settings")
     userSettings.add_on_change(SETTINGS_NAME, settings_changed)
 
 
 def reload_settings(view):
     '''Restores user settings.'''
-    userSettings, settings = load_settings()
+    settings = load_settings()
+    viewSettings = view.settings()
 
     for setting in ALL_SETTINGS:
-        userValue = userSettings.get(setting)
-        copyValue = userValue if userValue else settings.get(setting)
+        # erase the previous load (does not alter parent objects)
+        viewSettings.erase(setting)
+
+        userValue = viewSettings.get(setting)
+        defaultValue = settings.get(setting)
+        copyValue = userValue if userValue else defaultValue
 
         if copyValue is not None:
-            view.settings().set(setting, copyValue)
+            viewSettings.set(setting, copyValue)
 
-    if view.settings().get('sublimelinter') is not None:
-        view.settings().set('sublimelinter', True)
+    if viewSettings.get('sublimelinter') is not None:
+        viewSettings.set('sublimelinter', True)
 
 
 class LintCommand(sublime_plugin.TextCommand):
