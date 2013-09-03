@@ -663,6 +663,16 @@ def plugin_loaded():
     userSettings.add_on_change(SETTINGS_NAME, settings_changed)
 
 
+def merge(user, default):
+    if user is not None:
+        if isinstance(user, dict) and isinstance(default, dict):
+            return dict(list(default.items()) + list(user.items()))
+        else:
+            return user
+    else:
+        return default
+
+
 def reload_settings(view):
     '''Restores user settings.'''
     settings = load_settings()
@@ -674,7 +684,7 @@ def reload_settings(view):
 
         userValue = viewSettings.get(setting)
         defaultValue = settings.get(setting)
-        copyValue = userValue if userValue else defaultValue
+        copyValue = merge(userValue, defaultValue)
 
         if copyValue is not None:
             viewSettings.set(setting, copyValue)
