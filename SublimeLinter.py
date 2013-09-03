@@ -47,6 +47,9 @@ ORIGINAL_MARK_THEME = {
     'illegal': 'circle'
 }
 
+# Settings filename
+SETTINGS_NAME = 'SublimeLinter'
+
 # All available settings for SublimeLinter;
 # only these are inherited from SublimeLinter.sublime-settings
 ALL_SETTINGS = [
@@ -647,16 +650,28 @@ def settings_changed():
                 reload_settings(view)
 
 
+def load_settings():
+    userSettings = sublime.load_settings("Preferences.sublime-settings")
+    settings = sublime.load_settings(SETTINGS_NAME + '.sublime-settings')
+    return userSettings, settings
+
+
+def plugin_loaded():
+    userSettings, settings = load_settings()
+    settings.add_on_change(SETTINGS_NAME, settings_changed)
+    userSettings.add_on_change(SETTINGS_NAME, settings_changed)
+
+
 def reload_settings(view):
     '''Restores user settings.'''
-    settings_name = 'SublimeLinter'
-    settings = sublime.load_settings(settings_name + '.sublime-settings')
-    settings.clear_on_change(settings_name)
-    settings.add_on_change(settings_name, settings_changed)
+    userSettings, settings = load_settings()
 
     for setting in ALL_SETTINGS:
-        if settings.get(setting) is not None:
-            view.settings().set(setting, settings.get(setting))
+        userValue = userSettings.get(setting)
+        copyValue = userValue if userValue else settings.get(setting)
+
+        if copyValue is not None:
+            view.settings().set(setting, copyValue)
 
     if view.settings().get('sublimelinter') is not None:
         view.settings().set('sublimelinter', True)
