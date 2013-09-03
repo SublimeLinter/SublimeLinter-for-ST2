@@ -149,14 +149,14 @@ def run_once(linter, view, **kwargs):
 
     add_lint_marks(view, lines, error_underlines, violation_underlines, warning_underlines)
 
-    if view.settings().get('sublimelinter_notes'):
+    if view.settings().get('sublimelinter_notes', False):
         highlight_notes(view)
 
     update_statusbar(view)
     end = time.time()
     TIMES[vid] = (end - start) * 1000  # Keep how long it took to lint
 
-    if kwargs.get('event', None) == 'on_post_save' and view.settings().get('sublimelinter_popup_errors_on_save'):
+    if kwargs.get('event', None) == 'on_post_save' and view.settings().get('sublimelinter_popup_errors_on_save', False):
         popup_error_list(view)
 
 
@@ -440,7 +440,7 @@ def queue_linter(linter, view, timeout=-1, preemptive=False, event=None):
         erase_lint_marks(view)  # may have changed file type and left marks behind
 
         # No point in queuing anything if no linters will run
-        if not view.settings().get('sublimelinter_notes'):
+        if not view.settings().get('sublimelinter_notes', False):
             return
 
     if preemptive:
