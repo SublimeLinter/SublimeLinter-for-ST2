@@ -183,8 +183,8 @@ class BaseLinter(object):
 
             tempfilePath = os.path.join(TEMPFILES_DIR, filename)
 
-            with open(tempfilePath, 'w') as f:
-                f.write(code)
+            with open(tempfilePath, 'wb') as f:
+                f.write(code.encode('utf-8'))
 
             args.extend(self._get_lint_args(view, code, tempfilePath))
             code = ''
