@@ -43,6 +43,10 @@ class Linter(BaseLinter):
     def get_lint_args(self, view, code, filename):
         if (self.linter == 'gjslint'):
             args = []
+            gjslint_options = self.find_file('.gjslintrc', view)
+            if gjslint_options is not None:
+                args = gjslint_options.splitlines()
+
             gjslint_options = view.settings().get("gjslint_options", [])
             args.extend(gjslint_options)
             args.extend(['--nobeep', filename])
