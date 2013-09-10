@@ -1,0 +1,9 @@
+SublimeLinter 1.7.2 changelog
+=============================
+
+CHANGES/FIXES
+-------------
+- Update JSHint to v2.1.8
+- Fixing compatibility regression with latest JSHint
+- Fixing compatibility regression with latest Pyflakes
+- Apologizing for hasty v1.7.1 release ;)

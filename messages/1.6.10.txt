@@ -1,11 +1,9 @@
 SublimeLinter 1.6.10 changelog
+==============================
 
 CHANGES/FIXES
-
+-------------
 - Puppet validation supports error output for Puppet v3.0+.
-
 - JSHint options now support the (proper) "globals" definition.
-
 - Lua syntax check no longer creates luac.out file clutter.
-
 - Clarified documentation for styling sublimelinter.annotations.

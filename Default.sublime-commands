@@ -38,5 +38,19 @@
         "caption": "SublimeLinter: Reset",
         "command": "sublimelinter_lint",
         "args": {"action": "reset"}
+    },
+    {
+        "caption": "Preferences: SublimeLinter Settings – Default",
+        "command": "open_file", "args":
+        {
+            "file": "${packages}/SublimeLinter/SublimeLinter.sublime-settings"
+        }
+    },
+    {
+        "caption": "Preferences: SublimeLinter Settings – User",
+        "command": "open_file", "args":
+        {
+            "file": "${packages}/User/SublimeLinter.sublime-settings"
+        }
     }
 ]

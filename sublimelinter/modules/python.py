@@ -112,9 +112,9 @@ class Linter(BaseLinter):
                 # unknown.
                 if msg.startswith('duplicate argument'):
                     arg = msg.split('duplicate argument ', 1)[1].split(' ', 1)[0].strip('\'"')
-                    error = pyflakes.messages.DuplicateArgument(filename, lineno, arg)
+                    error = pyflakes.messages.DuplicateArgument(filename, value, arg)
                 else:
-                    error = PythonError(filename, lineno, msg)
+                    error = PythonError(filename, value, msg)
             else:
                 line = text.splitlines()[-1]
 
@@ -122,9 +122,9 @@ class Linter(BaseLinter):
                     offset = offset - (len(text) - len(line))
 
                 if offset is not None:
-                    error = OffsetError(filename, lineno, msg, offset)
+                    error = OffsetError(filename, value, msg, offset)
                 else:
-                    error = PythonError(filename, lineno, msg)
+                    error = PythonError(filename, value, msg)
             return [error]
         except ValueError as e:
             return [PythonError(filename, 0, e.args[0])]

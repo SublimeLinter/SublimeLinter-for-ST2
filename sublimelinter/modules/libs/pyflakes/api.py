@@ -1,12 +1,14 @@
 """
 API for the command-line I{pyflakes} tool.
 """
+from __future__ import with_statement
 
 import sys
 import os
 import _ast
+from optparse import OptionParser
 
-from pyflakes import checker
+from pyflakes import checker, __version__
 from pyflakes import reporter as modReporter
 
 __all__ = ['check', 'checkPath', 'checkRecursive', 'iterSourceCode', 'main']
@@ -52,13 +54,12 @@ def check(codeString, filename, reporter=None):
     except Exception:
         reporter.unexpectedError(filename, 'problem decoding source')
         return 1
-    else:
-        # Okay, it's syntactically valid.  Now check it.
-        w = checker.Checker(tree, filename)
-        w.messages.sort(key=lambda m: m.lineno)
-        for warning in w.messages:
-            reporter.flake(warning)
-        return len(w.messages)
+    # Okay, it's syntactically valid.  Now check it.
+    w = checker.Checker(tree, filename)
+    w.messages.sort(key=lambda m: m.lineno)
+    for warning in w.messages:
+        reporter.flake(warning)
+    return len(w.messages)
 
 
 def checkPath(filename, reporter=None):
@@ -73,17 +74,16 @@ def checkPath(filename, reporter=None):
     if reporter is None:
         reporter = modReporter._makeDefaultReporter()
     try:
-        f = open(filename, 'U')
-        try:
-            return check(f.read() + '\n', filename, reporter)
-        finally:
-            f.close()
+        with open(filename, 'U') as f:
+            codestr = f.read() + '\n'
     except UnicodeError:
         reporter.unexpectedError(filename, 'problem decoding source')
+        return 1
     except IOError:
         msg = sys.exc_info()[1]
         reporter.unexpectedError(filename, msg.args[1])
-    return 1
+        return 1
+    return check(codestr, filename, reporter)
 
 
 def iterSourceCode(paths):
@@ -120,8 +120,9 @@ def checkRecursive(paths, reporter):
     return warnings
 
 
-def main():
-    args = sys.argv[1:]
+def main(prog=None):
+    parser = OptionParser(prog=prog, version=__version__)
+    __, args = parser.parse_args()
     reporter = modReporter._makeDefaultReporter()
     if args:
         warnings = checkRecursive(args, reporter)

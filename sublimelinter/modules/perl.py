@@ -1,6 +1,3 @@
-# -*- coding: utf-8 -*-
-# perl.py - sublimelint package for checking perl files
-
 import re
 import subprocess
 

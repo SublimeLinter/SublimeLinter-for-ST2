@@ -1,0 +1,29 @@
+SublimeLinter 1.7.0 changelog
+=============================
+
+NEW FEATURES
+------------
+- Add "Quick Start" section to the README
+- New commands for the (Sublime Text) command palette to open the 
+  SublimeLinter preferences files (Default & User)
+- Ruby linting support via [ruby-lint](https://github.com/YorickPeterse/ruby-lint)
+- Haskell linting support via [hlint](http://community.haskell.org/~ndm/hlint/)
+- Add gutter mark themes. Add 5 new built-in themes:
+  "alpha", "bright", "dark", "hard", and "simple".
+  Custom themes can also be used.
+
+CHANGES/FIXES
+-------------
+- Update JSHint to v1.1.0
+- Update CoffeeScript linter to support latest error message format
+- Settings are refreshed when a new file is saved; this should fix
+  several bugs: #233, #359, #149, #367
+- The `lint_args` setting now matches the documentation; it will
+  override the default arguments rather than extend them. This will
+  give users full control over linter/checker arguments.
+- Clean up markdown formatting in changelog
+
+IMPORTANT
+---------
+Due to the fix for `lint_args`, if you are currently customizing this
+setting, you **must** adjust your settings.

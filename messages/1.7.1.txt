@@ -1,0 +1,12 @@
+SublimeLinter 1.7.1 changelog
+=============================
+
+CHANGES/FIXES
+-------------
+- Update JSLint to latest
+- Update JSHint to v2.1.5
+- Updated link to JSHint documentation
+- Updated PEP8 to v1.4.6
+- Updated Pyflakes to v0.7.3
+- Gutter mark icons are now retina quality
+- Included Gutter mark icon PSD (for tinkering :)
