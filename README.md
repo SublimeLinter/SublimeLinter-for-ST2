@@ -168,14 +168,13 @@ Following are notes specific to individual linters that you should be aware of:
 
   It also supports `.gjslintrc` files. If using gjslint, SublimeLinter will recursively search the directory tree (from the file location to the file-system root directory).
   An example of a `.gjslintrc` file:
-
+```
     --exclude_directories=reports,tests
     --exclude_files=Gruntfile.js
     --max_line_length=120
     --disable=5
     --custom_jsdoc_tags=namespace,version
-
-
+```
 * **Perl** - Due to a vulnerability (issue [#77](https://github.com/SublimeLinter/SublimeLinter/issues/77)) with the Perl linter, Perl syntax checking is no longer enabled by default. The default linter for Perl has been replaced by Perl::Critic. The standard Perl syntax checker can still be invoked by switching the "perl_linter" setting to "perl".
 
 * **Ruby** - If you are using rvm or rbenv, you will probably have to specify the full path to the ruby you are using in the "sublimelinter_executable_map" setting. See "Configuring" below for more info.
