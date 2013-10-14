@@ -1195,6 +1195,7 @@ var JSHINT = (function () {
             proto       : true, // if the `__proto__` property should be allowed
             prototypejs : true, // if Prototype and Scriptaculous globals should be
                                 // predefined
+            radix       : true, // if JS parseInt should require a radix
             rhino       : true, // if the Rhino environment globals should be predefined
             shelljs     : true, // if ShellJS globals should be predefined
             undef       : true, // if variables should be declared before used
@@ -3426,8 +3427,10 @@ var JSHINT = (function () {
         nospace(state.tokens.prev, state.tokens.curr);
 
         if (typeof left === "object") {
-            if (left.value === "parseInt" && n === 1) {
-                warning("W065", state.tokens.curr);
+            if (state.option.radix) {
+                if (left.value === "parseInt" && n === 1) {
+                    warning("W065", state.tokens.curr);
+                }
             }
             if (!state.option.evil) {
                 if (left.value === "eval" || left.value === "Function" ||
