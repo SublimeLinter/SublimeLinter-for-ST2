@@ -196,12 +196,18 @@ class BaseLinter(object):
         else:
             return u''
 
+        if hasattr(self, 'get_lint_env'):
+            env = dict(os.environ.items() + self.get_lint_env(view).items())
+        else:
+            env = None;
+
         try:
             process = subprocess.Popen(args,
                                        stdin=subprocess.PIPE,
                                        stdout=subprocess.PIPE,
                                        stderr=subprocess.STDOUT,
-                                       startupinfo=self.get_startupinfo())
+                                       startupinfo=self.get_startupinfo(),
+                                       env=env)
             process.stdin.write(code)
             result = process.communicate()[0]
         finally:
