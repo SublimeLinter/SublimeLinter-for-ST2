@@ -167,10 +167,16 @@ class Linter(BaseLinter):
                     self.file_errors += 1
                     self.total_errors += 1
 
+                    class MockLocation:
+                        def __init__(self, lineno):
+                            self.lineno = lineno
+
+                    loc = MockLocation(line_number)
+
                     if code.startswith('E'):
-                        messages.append(Pep8Error(filename, line_number, offset, code, message))
+                        messages.append(Pep8Error(filename, loc, offset, code, message))
                     else:
-                        messages.append(Pep8Warning(filename, line_number, offset, code, message))
+                        messages.append(Pep8Warning(filename, loc, offset, code, message))
 
                     return code
 
