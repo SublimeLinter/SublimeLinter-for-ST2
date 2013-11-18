@@ -1,4 +1,4 @@
-var eslint = require("./eslint/lib/eslint");
+var eslint = require("./eslint");
 
 exports.lint = function (code, config) {
     var results;
@@ -6,7 +6,7 @@ exports.lint = function (code, config) {
     config.rules = config.rules || {};
 
     try {
-        results = eslint.verify(code, config);
+        results = eslint.eslint.verify(code, config);
     } catch (e) {
         results = [
             {line: 1, character: 1, reason: e.message}
