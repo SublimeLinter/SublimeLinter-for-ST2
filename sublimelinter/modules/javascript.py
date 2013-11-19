@@ -77,9 +77,5 @@ class Linter(BaseLinter):
             for error in errors:
                 if ('line' in error):
                     lineno = error['line']
-                    if (self.linter == 'eslint'):
-                        self.add_message(lineno, lines, error['message'], errorMessages)
-                        self.underline_range(view, lineno, error['column'], errorUnderlines)
-                    else:
-                        self.add_message(lineno, lines, error['reason'], errorMessages)
-                        self.underline_range(view, lineno, error['character'] - 1, errorUnderlines)
+                    self.add_message(lineno, lines, error['reason'], errorMessages)
+                    self.underline_range(view, lineno, error['character'] - 1, errorUnderlines)
