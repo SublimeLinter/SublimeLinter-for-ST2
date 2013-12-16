@@ -234,7 +234,7 @@ class BaseLinter(object):
         line = view.full_line(view.text_point(lineno, 0))
         position += line.begin()
 
-        for i in xrange(length):
+        for i in range(length):
             underlines.append(sublime.Region(position + i))
 
     def underline_regex(self, view, lineno, regex, lines, underlines, wordmatch=None, linematch=None):
