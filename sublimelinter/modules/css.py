@@ -17,6 +17,13 @@ class Linter(BaseLinter):
     def get_lint_args(self, view, code, filename):
         return self.get_javascript_args(view, 'csslint', code)
 
+    def get_javascript_options(self, view):
+        rc_options = self.find_file('.csslintrc', view)
+
+        if rc_options is not None:
+            rc_options = self.strip_json_comments(rc_options)
+            return json.dumps(json.loads(rc_options))
+
     def parse_errors(self, view, errors, lines, errorUnderlines, violationUnderlines, warningUnderlines, errorMessages, violationMessages, warningMessages):
         try:
             errors = json.loads(errors.strip() or '[]')
