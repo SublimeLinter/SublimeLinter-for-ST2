@@ -45,7 +45,7 @@ class Linter(BaseLinter):
                 position = -1
 
                 while True:
-                    line = it.next()
+                    line = next(it)
                     match = re.match(MARK_RE, line)
 
                     if match:

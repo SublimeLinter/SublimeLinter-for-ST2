@@ -428,7 +428,7 @@ class LintChecker(object):
     def next_statement(self, expect_line=False, check_line=True):
         try:
             while True:
-                raw_line = self.sourcefile.next()
+                raw_line = next(self.sourcefile)
                 # strip EOL
                 if raw_line[-1] == '\n':  # ... unless this is the last line which might not have a \n.
                     raw_line = raw_line[:-1]
