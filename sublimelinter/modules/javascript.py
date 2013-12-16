@@ -46,6 +46,13 @@ class Linter(BaseLinter):
 
     def get_javascript_options(self, view):
         if self.linter == 'jshint':
+            pkg_options = self.find_file('package.json', view)
+
+            if pkg_options is not None:
+                pkg_options = json.loads(pkg_options)
+                if pkg_options['jshintConfig']:
+                    return json.dumps(pkg_options['jshintConfig'])
+
             rc_options = self.find_file('.jshintrc', view)
 
             if rc_options is not None:
