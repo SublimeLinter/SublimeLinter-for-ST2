@@ -99,7 +99,7 @@ class Linter(BaseLinter):
     def pyflakes_check(self, code, filename, ignore=None):
         try:
             tree = compile(code, filename, "exec", _ast.PyCF_ONLY_AST)
-        except (SyntaxError, IndentationError), value:
+        except (SyntaxError, IndentationError) as value:
             msg = value.args[0]
 
             (lineno, offset, text) = value.lineno, value.offset, value.text
@@ -125,7 +125,7 @@ class Linter(BaseLinter):
                 else:
                     error = PythonError(filename, value, msg)
             return [error]
-        except ValueError, e:
+        except ValueError as e:
             return [PythonError(filename, 0, e.args[0])]
         else:
             # Okay, it's syntactically valid.  Now check it.
@@ -186,7 +186,7 @@ class Linter(BaseLinter):
 
             try:
                 pep8.Checker(filename, good_lines, options).check_all()
-            except Exception, e:
+            except Exception as e:
                 print "An exception occured when running pep8 checker: %s" % e
 
         return messages

@@ -429,7 +429,7 @@ def _update_view(view, filename, **kwargs):
 
     try:
         run_once(select_linter(view), view, **kwargs)
-    except RuntimeError, ex:
+    except RuntimeError as ex:
         print ex
 
 
