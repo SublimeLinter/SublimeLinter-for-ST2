@@ -148,11 +148,13 @@ class BaseLinter(object):
         return (True, 'using "{0}" for executable'.format(self.executable))
 
     def _get_lint_args(self, view, code, filename):
-        if hasattr(self, 'get_lint_args'):
+        settings = view.settings().get('SublimeLinter', {}).get(self.language, {})
+        
+        # presence of linter settings will force default arguments logic
+        if hasattr(self, 'get_lint_args') and not settings:
             return self.get_lint_args(view, code, filename) or []
         else:
             lintArgs = self.lint_args or []
-            settings = view.settings().get('SublimeLinter', {}).get(self.language, {})
 
             if settings:
                 if 'lint_args' in settings:
