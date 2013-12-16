@@ -52,6 +52,9 @@ class Linter(BaseLinter):
                 rc_options = self.strip_json_comments(rc_options)
                 return json.dumps(json.loads(rc_options))
 
+    def get_lint_env(self, view):
+        return { 'CUSTOM_%s' % self.linter.upper() : view.settings().get("%s_module" % self.linter, []) };
+
     def parse_errors(self, view, errors, lines, errorUnderlines, violationUnderlines, warningUnderlines, errorMessages, violationMessages, warningMessages):
         if (self.linter == 'gjslint'):
             ignore = view.settings().get('gjslint_ignore', [])
