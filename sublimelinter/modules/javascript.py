@@ -46,7 +46,12 @@ class Linter(BaseLinter):
 
     def get_javascript_options(self, view):
         if self.linter == 'jshint':
-            rc_options = self.find_file('.jshintrc', view)
+            jshint_config_file = '.jshintrc'
+
+            rc_options = self.find_file(jshint_config_file, view)
+            # As a last resort, look for the file in the user’s home directory.
+            if not rc_options:
+                rc_options = self.find_file_in_home(jshint_config_file)
 
             if rc_options is not None:
                 rc_options = self.strip_json_comments(rc_options)
