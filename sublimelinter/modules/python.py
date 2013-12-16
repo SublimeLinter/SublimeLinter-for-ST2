@@ -38,12 +38,14 @@
 
 # TODO:
 # * fix regex for variable names inside strings (quotes)
-
+from os import path
+import pickle
 import re
-import _ast
+import subprocess
 
 import pep8
 import pyflakes.checker as pyflakes
+from python_extra import Pep8Error, Pep8Warning, OffsetError, pyflakes_check
 
 from base_linter import BaseLinter
 
@@ -54,91 +56,61 @@ CONFIG = {
 }
 
 
-class PythonLintError(pyflakes.messages.Message):
-
-    def __init__(self, filename, loc, level, message, message_args, offset=None, text=None):
-        super(PythonLintError, self).__init__(filename, loc)
-        self.level = level
-        self.message = message
-        self.message_args = message_args
-        if offset is not None:
-            self.offset = offset
-        if text is not None:
-            self.text = text
-
-
-class Pep8Error(PythonLintError):
-
-    def __init__(self, filename, loc, offset, code, text):
-        # PEP 8 Errors are downgraded to "warnings"
-        super(Pep8Error, self).__init__(filename, loc, 'W', '[W] PEP 8 (%s): %s', (code, text),
-                                        offset=offset, text=text)
-
-
-class Pep8Warning(PythonLintError):
-
-    def __init__(self, filename, loc, offset, code, text):
-        # PEP 8 Warnings are downgraded to "violations"
-        super(Pep8Warning, self).__init__(filename, loc, 'V', '[V] PEP 8 (%s): %s', (code, text),
-                                          offset=offset, text=text)
-
-
-class OffsetError(PythonLintError):
-
-    def __init__(self, filename, loc, text, offset):
-        super(OffsetError, self).__init__(filename, loc, 'E', '[E] %r', (text,), offset=offset + 1, text=text)
-
-
-class PythonError(PythonLintError):
-
-    def __init__(self, filename, loc, text):
-        super(PythonError, self).__init__(filename, loc, 'E', '[E] %r', (text,), text=text)
-
-
 class Linter(BaseLinter):
-    def pyflakes_check(self, code, filename, ignore=None):
-        try:
-            tree = compile(code, filename, "exec", _ast.PyCF_ONLY_AST)
-        except (SyntaxError, IndentationError), value:
-            msg = value.args[0]
+    def pyflakes_builtin_check(self, code, filename, ignore=None):
+        return pyflakes_check(code, filename, ignore)
 
-            (lineno, offset, text) = value.lineno, value.offset, value.text
+    def pyflakes_external_check(self, code, filename, ignore=None):
+        process = subprocess.Popen(self.python_path,
+                                   stdin=subprocess.PIPE,
+                                   stdout=subprocess.PIPE,
+                                   stderr=subprocess.STDOUT,
+                                   startupinfo=self.get_startupinfo())
 
-            # If there's an encoding problem with the file, the text is None.
-            if text is None:
-                # Avoid using msg, since for the only known case, it contains a
-                # bogus message that claims the encoding the file declared was
-                # unknown.
-                if msg.startswith('duplicate argument'):
-                    arg = msg.split('duplicate argument ', 1)[1].split(' ', 1)[0].strip('\'"')
-                    error = pyflakes.messages.DuplicateArgument(filename, value, arg)
-                else:
-                    error = PythonError(filename, value, msg)
-            else:
-                line = text.splitlines()[-1]
+        wrapper_code = self.get_wrapper_code(self.paths, code, filename, ignore)
+        result = process.communicate(input=wrapper_code)[0]
+        # Pickle chokes on CRs in pickled format, which get added to stdout on Win
+        result = result.replace('\r\n', '\n')
+        return pickle.loads(result)
 
-                if offset is not None:
-                    offset = offset - (len(text) - len(line))
+    @property
+    def paths(self):
+        """
+        Need top-level folder for the import of pyflakes_check in
+        the wrapper code. This is done instead of the modules folder
+        so that OffSetError and PythonError have the same namespacing
+        as in python.py when unpickling.
 
-                if offset is not None:
-                    error = OffsetError(filename, value, msg, offset)
-                else:
-                    error = PythonError(filename, value, msg)
-            return [error]
-        except ValueError, e:
-            return [PythonError(filename, 0, e.args[0])]
-        else:
-            # Okay, it's syntactically valid.  Now check it.
-            if ignore is not None:
-                old_magic_globals = pyflakes._MAGIC_GLOBALS
-                pyflakes._MAGIC_GLOBALS += ignore
+        Libs folder needed for import of pyflakes.checker in
+        python_extra.py.
+        """
+        norm_join = lambda *args: path.normpath(path.join(*args))
+        up_dirs = lambda times: path.join(*([path.pardir] * times))
+        module_dir = path.dirname(path.abspath(__file__))
 
-            w = pyflakes.Checker(tree, filename)
+        linter_dir = norm_join(module_dir, up_dirs(2))
+        libs_dir = norm_join(module_dir, 'libs')
+        return [linter_dir, libs_dir]
 
-            if ignore is not None:
-                pyflakes._MAGIC_GLOBALS = old_magic_globals
+    def get_wrapper_code(self, paths, code, filename, ignore):
+        return """
+import pickle
+import sys
 
-            return w.messages
+paths = """ + repr(paths) + """
+sys.path.extend(paths)
+from sublimelinter.modules.python_extra import pyflakes_check
+
+code = """ + repr(code) + """
+filename = """ + repr(filename) + """
+ignore = """ + repr(ignore) + """
+
+result = pyflakes_check(code, filename, ignore)
+
+# Using stdout for clarity but any print
+# statements would also go to the output.
+sys.stdout.write(pickle.dumps(result))
+"""
 
     def pep8_check(self, code, filename, ignore=None):
         messages = []
@@ -192,6 +164,7 @@ class Linter(BaseLinter):
         return messages
 
     def built_in_check(self, view, code, filename):
+        self.python_path = view.settings().get('python_path', None)
         errors = []
 
         if view.settings().get("pep8", True):
@@ -201,7 +174,8 @@ class Linter(BaseLinter):
         pyflakes_disabled = view.settings().get('pyflakes_disabled', False)
 
         if not pyflakes_disabled:
-            errors.extend(self.pyflakes_check(code, filename, pyflakes_ignore))
+            checker = self.pyflakes_external_check if self.python_path else self.pyflakes_builtin_check
+            errors.extend(checker(code, filename, pyflakes_ignore))
 
         return errors
 

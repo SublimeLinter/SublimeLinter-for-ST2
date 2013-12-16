@@ -61,6 +61,7 @@ ALL_SETTINGS = [
     'perl_linter',
     'pyflakes_ignore',
     'pyflakes_ignore_import_*',
+    'python_path',
     'sublimelinter',
     'sublimelinter_delay',
     'sublimelinter_disable',
