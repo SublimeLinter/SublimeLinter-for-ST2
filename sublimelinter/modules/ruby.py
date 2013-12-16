@@ -12,8 +12,11 @@ CONFIG = {
 class Linter(BaseLinter):
     def parse_errors(self, view, errors, lines, errorUnderlines, violationUnderlines, warningUnderlines, errorMessages, violationMessages, warningMessages):
         for line in errors.splitlines():
-            match = re.match(r'^.+:(?P<line>\d+):\s+(?P<error>.+)', line)
+            match = re.match(r'^.+:(?P<line>\d+):\s+(?P<type>warning: )?(?P<error>.+)', line)
 
             if match:
-                error, line = match.group('error'), match.group('line')
-                self.add_message(int(line), lines, error, errorMessages)
+                error, warn, line = match.group('error'), match.group('type'), match.group('line')
+                if warn:
+                    self.add_message(int(line), lines, error, warningMessages)
+                else:
+                    self.add_message(int(line), lines, error, errorMessages)
