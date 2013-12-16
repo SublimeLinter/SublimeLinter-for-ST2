@@ -19,7 +19,7 @@ class Linter(BaseLinter):
     def get_executable(self, view):
         self.linter = view.settings().get('javascript_linter', 'jshint')
 
-        if (self.linter in ('jshint', 'jslint')):
+        if (self.linter in ('jshint', 'jslint', 'eslint')):
             return self.get_javascript_engine(view)
         elif (self.linter == 'gjslint'):
             try:
@@ -39,14 +39,17 @@ class Linter(BaseLinter):
             args.extend(gjslint_options)
             args.extend([u'--nobeep', filename])
             return args
-        elif (self.linter in ('jshint', 'jslint')):
+        elif (self.linter in ('jshint', 'jslint', 'eslint')):
             return self.get_javascript_args(view, self.linter, code)
         else:
             return []
 
     def get_javascript_options(self, view):
-        if self.linter == 'jshint':
-            rc_options = self.find_file('.jshintrc', view)
+        if (self.linter in ('jshint', 'eslint')):
+            if (self.linter == 'jshint'):
+                rc_options = self.find_file('.jshintrc', view)
+            else:
+                rc_options = self.find_file('eslint.json', view)
 
             if rc_options is not None:
                 rc_options = self.strip_json_comments(rc_options)
@@ -65,13 +68,14 @@ class Linter(BaseLinter):
                     if (int(errnum) not in ignore):
                         self.add_message(int(line), lines, message, errorMessages)
 
-        elif (self.linter in ('jshint', 'jslint')):
+        elif (self.linter in ('jshint', 'jslint', 'eslint')):
             try:
                 errors = json.loads(errors.strip() or '[]')
             except ValueError:
                 raise ValueError("Error from {0}: {1}".format(self.linter, errors))
 
             for error in errors:
-                lineno = error['line']
-                self.add_message(lineno, lines, error['reason'], errorMessages)
-                self.underline_range(view, lineno, error['character'] - 1, errorUnderlines)
+                if ('line' in error):
+                    lineno = error['line']
+                    self.add_message(lineno, lines, error['reason'], errorMessages)
+                    self.underline_range(view, lineno, error['character'] - 1, errorUnderlines)
