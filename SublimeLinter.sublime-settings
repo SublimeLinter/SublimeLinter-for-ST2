@@ -226,6 +226,9 @@
     // Objective-J: if true, non-ascii characters are flagged as an error.
     "sublimelinter_objj_check_ascii": false,
 
+    // Puppet: report warnings, such as deprecation notices from puppet parser, set to false to disable.
+    "puppet_warnings": true,
+
     // Set to true to highlight annotations
     "sublimelinter_notes": false,
 
