@@ -13,6 +13,7 @@ CONFIG = {
 
 ERROR_RE = re.compile(r'^(?P<path>.*\.java):(?P<line>\d+): (?P<warning>warning: )?(?:\[\w+\] )?(?P<error>.*)')
 MARK_RE = re.compile(r'^(?P<mark>\s*)\^$')
+SYMBOL_RE = re.compile(r'^symbol\s*(?P<symbol>:\s*.*)$')
 
 
 class Linter(BaseLinter):
@@ -46,6 +47,11 @@ class Linter(BaseLinter):
 
                 while True:
                     line = it.next()
+                    match = re.match(SYMBOL_RE, line)
+
+                    if match:
+                        error += match.group('symbol')
+
                     match = re.match(MARK_RE, line)
 
                     if match:
