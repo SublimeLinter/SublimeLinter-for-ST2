@@ -36,6 +36,7 @@ SublimeLinter has built in linters for the following languages:
 * Java - lint via `javac -Xlint`
 * JavaScript - lint via built in [jshint](http://jshint.org), [jslint](http://jslint.com), or the [closure linter (gjslint)](https://developers.google.com/closure/utilities/docs/linter_howto) (if installed)
 * Lua - syntax check via `luac`
+* Matlab - lint via `mlint`
 * Objective-J - lint via built-in [capp_lint](https://github.com/aparajita/capp_lint)
 * Perl - lint via [Perl::Critic](http://perlcritic.com/) or syntax+deprecation check via `perl -c`
 * PHP - syntax check via `php -l`
@@ -183,6 +184,15 @@ Following are notes specific to individual linters that you should be aware of:
   You may want to modify the options passed to jshint, jslint, or gjslint. This can be done by using the **jshint_options**, **jslint_options**, or **gjslint_options** setting. Refer to the jshint.org site, the jslint.com site, or run `gjslint --help` for more information on the configuration options available.
 
   SublimeLinter supports `.jshintrc` files. If using JSHint, SublimeLinter will recursively search the directory tree (from the file location to the file-system root directory). This functionality is specified in the [JSHint README](https://github.com/jshint/node-jshint/#within-your-projects-directory-tree).
+
+* **Matlab** - The linter program `mlint` is probably not on your `PATH`. Hence, you might want to add an entry for `matlab` with the full path to the program to `sublimelinter_executable_map` (in the SublimeLinter **User Settings** file). For example (on a Mac with Matlab R2013a):
+
+        "sublimelinter_executable_map":
+        {
+          "matlab": "/Applications/MATLAB_R2013a.app/bin/maci64/mlint"
+        }
+
+    Please note that both linter warnings *and* errors are (currently) shown as warnings with SublimeLinter.
 
 * **Perl** - Due to a vulnerability (issue [#77](https://github.com/SublimeLinter/SublimeLinter/issues/77)) with the Perl linter, Perl syntax checking is no longer enabled by default. The default linter for Perl has been replaced by Perl::Critic. The standard Perl syntax checker can still be invoked by switching the "perl_linter" setting to "perl".
 
