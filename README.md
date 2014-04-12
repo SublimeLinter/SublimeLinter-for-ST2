@@ -187,7 +187,7 @@ Following are notes specific to individual linters that you should be aware of:
 * **Perl** - Due to a vulnerability (issue [#77](https://github.com/SublimeLinter/SublimeLinter/issues/77)) with the Perl linter, Perl syntax checking is no longer enabled by default. The default linter for Perl has been replaced by Perl::Critic. The standard Perl syntax checker can still be invoked by switching the "perl_linter" setting to "perl".
 
 * **Puppet** - Optional alternative linter using puppet-lint. Install with `gem install puppet-lint`. Add these adjustments to the SublimeLinter **User Settings** file. An example:
-"sublimelinter_syntax_map": { "Puppet": "puppet-lint" }. Note this only lints on file save.
+`"sublimelinter_executable_map": { "Puppet": "puppet-lint" }`. Note this only lints on file save.
 
 * **Ruby** - If you are using rvm or rbenv, you will probably have to specify the full path to the ruby you are using in the "sublimelinter_executable_map" setting. See "Configuring" below for more info.
 
