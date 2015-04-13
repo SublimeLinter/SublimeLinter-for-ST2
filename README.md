@@ -30,6 +30,7 @@ SublimeLinter has built in linters for the following languages:
 * C/C++ - lint via `cppcheck`
 * CoffeeScript - lint via `coffee -s -l`
 * CSS - lint via built-in [csslint](http://csslint.net)
+* Erlang - lint via `erlc -v`
 * Git Commit Messages - lint via built-in module based on [A Note About Git Commit Messages](http://tbaggery.com/2008/04/19/a-note-about-git-commit-messages.html).
 * Haml - syntax check via `haml -c`
 * HTML - lint via `tidy` (actually [tidy for HTML5](http://w3c.github.com/tidy-html5/))
