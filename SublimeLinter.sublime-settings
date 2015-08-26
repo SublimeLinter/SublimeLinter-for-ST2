@@ -5,12 +5,12 @@
     /*
         Sets the mode in which SublimeLinter runs:
 
-        true - Linting occurs in the background as you type (the default).
+        true - Linting occurs in the background as you type.
         false - Linting only occurs when you initiate it.
-        "load-save" - Linting occurs only when a file is loaded and saved.
+        "load-save" - Linting occurs only when a file is loaded and saved (the default).
         "save-only" - Linting occurs only when a file is saved.
     */
-    "sublimelinter": true,
+    "sublimelinter": "load-save",
 
     /*
         Maps language names **as listed at the beginning of the README** (but all lowercase)
@@ -123,7 +123,8 @@
         "browser": true,
         "wsh": true,
         "trailing": true,
-        "sub": true
+        "sub": true,
+        "devel": true
     },
 
     // A list of command line options to send to gjslint. --nobeep is always sent.

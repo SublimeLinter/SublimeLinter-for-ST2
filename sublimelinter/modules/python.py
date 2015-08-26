@@ -54,9 +54,16 @@ CONFIG = {
 }
 
 
+class LOC(object):
+    def __init__(self, lineno):
+        self.lineno = lineno
+
+
 class PythonLintError(pyflakes.messages.Message):
 
     def __init__(self, filename, loc, level, message, message_args, offset=None, text=None):
+        if isinstance(loc, int):
+            loc = LOC(loc)
         super(PythonLintError, self).__init__(filename, loc)
         self.level = level
         self.message = message
