@@ -149,6 +149,15 @@ There are a number of settings available to customize the behavior of SublimeLin
 
 Do **NOT** edit the default SublimeLinter settings. Your changes will be lost when SublimeLinter is updated. ALWAYS edit the user SublimeLinter settings by selecting `Preferences->Package Settings->SublimeLinter->Settings - User`. Note that individual settings you include in your user settings will _completely_ replace the corresponding default setting, so you must provide that setting in its entirety.
 
+## Ignoring specific warnings
+
+* **Python** - To ignore specific PEP8 warnings, edit `Preferences->Package Settings->SublimeLinter->Settings - User` and add the warnings to ignore to the `pep8_ignore` list. For example:
+
+      {
+            "pep8_ignore": ["E128", "E501"]
+      }
+
+
 ### Linter-specific notes
 Following are notes specific to individual linters that you should be aware of:
 
