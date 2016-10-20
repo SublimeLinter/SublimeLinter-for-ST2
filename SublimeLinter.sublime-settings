@@ -211,6 +211,22 @@
     ],
 
     /*
+        Ignore pyflakes errors by message class name.
+        See https://github.com/SublimeLinter/SublimeLinter/blob/master/sublimelinter/modules/libs/pyflakes/messages.py
+        for message names.
+
+        Example:
+
+       "pyflakes_ignore_messages":
+        [
+            "RedefinedInListComp"
+        ],
+    */
+    "pyflakes_ignore_messages":
+    [
+    ],
+
+    /*
         Ordinarily pyflakes will issue a warning when 'from foo import *' is used,
         but it is ignored since the warning is not that helpful. If you want to see this warning,
         set this option to false.
