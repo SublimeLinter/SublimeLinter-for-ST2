@@ -182,7 +182,7 @@ Following are notes specific to individual linters that you should be aware of:
 
   You may want to modify the options passed to jshint, jslint, or gjslint. This can be done by using the **jshint_options**, **jslint_options**, or **gjslint_options** setting. Refer to the jshint.org site, the jslint.com site, or run `gjslint --help` for more information on the configuration options available.
 
-  SublimeLinter supports `.jshintrc` files. If using JSHint, SublimeLinter will recursively search the directory tree (from the file location to the file-system root directory). This functionality is specified in the [JSHint README](https://github.com/jshint/node-jshint/#within-your-projects-directory-tree).
+  SublimeLinter supports `.jshintrc` files. If using JSHint, SublimeLinter will recursively search the directory tree (from the file location to the file-system root directory). This functionality is specified in the [JSHint documentation](http://jshint.com/docs/).
 
 * **Perl** - Due to a vulnerability (issue [#77](https://github.com/SublimeLinter/SublimeLinter/issues/77)) with the Perl linter, Perl syntax checking is no longer enabled by default. The default linter for Perl has been replaced by Perl::Critic. The standard Perl syntax checker can still be invoked by switching the "perl_linter" setting to "perl".
 
