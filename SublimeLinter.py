@@ -47,6 +47,9 @@ ORIGINAL_MARK_THEME = {
     'illegal': 'circle'
 }
 
+# Settings filename
+SETTINGS_NAME = 'SublimeLinter'
+
 # All available settings for SublimeLinter;
 # only these are inherited from SublimeLinter.sublime-settings
 ALL_SETTINGS = [
@@ -149,14 +152,14 @@ def run_once(linter, view, **kwargs):
 
     add_lint_marks(view, lines, error_underlines, violation_underlines, warning_underlines)
 
-    if view.settings().get('sublimelinter_notes'):
+    if view.settings().get('sublimelinter_notes', False):
         highlight_notes(view)
 
     update_statusbar(view)
     end = time.time()
     TIMES[vid] = (end - start) * 1000  # Keep how long it took to lint
 
-    if kwargs.get('event', None) == 'on_post_save' and view.settings().get('sublimelinter_popup_errors_on_save'):
+    if kwargs.get('event', None) == 'on_post_save' and view.settings().get('sublimelinter_popup_errors_on_save', False):
         popup_error_list(view)
 
 
@@ -440,7 +443,7 @@ def queue_linter(linter, view, timeout=-1, preemptive=False, event=None):
         erase_lint_marks(view)  # may have changed file type and left marks behind
 
         # No point in queuing anything if no linters will run
-        if not view.settings().get('sublimelinter_notes'):
+        if not view.settings().get('sublimelinter_notes', False):
             return
 
     if preemptive:
@@ -647,19 +650,47 @@ def settings_changed():
                 reload_settings(view)
 
 
+def load_settings():
+    settings = sublime.load_settings(SETTINGS_NAME + '.sublime-settings')
+    return settings
+
+
+def plugin_loaded():
+    settings = load_settings()
+    settings.add_on_change(SETTINGS_NAME, settings_changed)
+
+    userSettings = sublime.load_settings("Preferences.sublime-settings")
+    userSettings.add_on_change(SETTINGS_NAME, settings_changed)
+
+
+def merge(user, default):
+    if user is not None:
+        if isinstance(user, dict) and isinstance(default, dict):
+            return dict(list(default.items()) + list(user.items()))
+        else:
+            return user
+    else:
+        return default
+
+
 def reload_settings(view):
     '''Restores user settings.'''
-    settings_name = 'SublimeLinter'
-    settings = sublime.load_settings(settings_name + '.sublime-settings')
-    settings.clear_on_change(settings_name)
-    settings.add_on_change(settings_name, settings_changed)
+    settings = load_settings()
+    viewSettings = view.settings()
 
     for setting in ALL_SETTINGS:
-        if settings.get(setting) is not None:
-            view.settings().set(setting, settings.get(setting))
+        # erase the previous load (does not alter parent objects)
+        viewSettings.erase(setting)
 
-    if view.settings().get('sublimelinter') is not None:
-        view.settings().set('sublimelinter', True)
+        userValue = viewSettings.get(setting)
+        defaultValue = settings.get(setting)
+        copyValue = merge(userValue, defaultValue)
+
+        if copyValue is not None:
+            viewSettings.set(setting, copyValue)
+
+    if viewSettings.get('sublimelinter') is not None:
+        viewSettings.set('sublimelinter', True)
 
 
 class LintCommand(sublime_plugin.TextCommand):
