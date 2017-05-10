@@ -146,6 +146,9 @@ class Linter(BaseLinter):
         _lines = code.split('\n')
 
         if _lines:
+            class Location:
+                def __init__(self, lineno):
+                    self.lineno = lineno
             class SublimeLinterReport(pep8.BaseReport):
                 def error(self, line_number, offset, text, check):
                     """Report an error, according to options."""
@@ -166,11 +169,10 @@ class Linter(BaseLinter):
 
                     self.file_errors += 1
                     self.total_errors += 1
-
                     if code.startswith('E'):
-                        messages.append(Pep8Error(filename, line_number, offset, code, message))
+                        messages.append(Pep8Error(filename, Location(line_number), offset, code, message))
                     else:
-                        messages.append(Pep8Warning(filename, line_number, offset, code, message))
+                        messages.append(Pep8Warning(filename, Location(line_number), offset, code, message))
 
                     return code
 
