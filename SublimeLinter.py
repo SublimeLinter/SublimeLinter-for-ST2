@@ -390,7 +390,7 @@ def select_linter(view, ignore_disabled=False):
             # user settings cannot be loaded during plugin startup.
             if linter is not None and not linter.enabled:
                 enabled, message = linter.check_enabled(view)
-                print 'SublimeLinter: {0} {1} ({2})'.format(language, 'enabled' if enabled else 'disabled', message)
+                print('SublimeLinter: {0} {1} ({2})'.format(language, 'enabled' if enabled else 'disabled', message))
 
                 if not enabled:
                     del LINTERS['' + language]
@@ -430,7 +430,7 @@ def _update_view(view, filename, **kwargs):
     try:
         run_once(select_linter(view), view, **kwargs)
     except RuntimeError, ex:
-        print ex
+        print(ex)
 
 
 def queue_linter(linter, view, timeout=-1, preemptive=False, event=None):
@@ -631,7 +631,7 @@ def reload_view_module(view):
         module = sys.modules[linter.__module__]
 
         if module.__file__.encode('utf-8') == (view.file_name() or '').encode('utf-8'):
-            print 'SublimeLinter: reloading language:', linter.language
+            print('SublimeLinter: reloading language: {}'.format(linter.language))
             MOD_LOAD.reload_module(module)
             lint_views(linter)
             break

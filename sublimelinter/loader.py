@@ -26,7 +26,7 @@ os.chdir(os.path.abspath(os.path.join(os.path.dirname(__file__.encode('utf-8')),
 
 for mod in [u'capp_lint', u'pep8', u'pyflakes', u'pyflakes.api', u'pyflakes.checker', u'pyflakes.messages', u'pyflakes.reporter']:
     __import__(mod)
-    print u'imported {0}'.format(mod)
+    print(u'imported {0}'.format(mod))
 
 os.chdir(tmpdir)
 
@@ -114,12 +114,12 @@ class Loader(object):
 
                 lc_language = language.lower()
                 self.linters[lc_language] = linter
-                print u'SublimeLinter: {0} loaded'.format(language)
+                print(u'SublimeLinter: {0} loaded'.format(language))
             else:
-                print u'SublimeLinter: {0} disabled (no language specified in module)'.format(name)
+                print(u'SublimeLinter: {0} disabled (no language specified in module)'.format(name))
 
         except KeyError:
-            print u'SublimeLinter: general error importing {0} ({1})'.format(name, language or '<unknown>')
+            print(u'SublimeLinter: general error importing {0} ({1})'.format(name, language or '<unknown>'))
 
         os.chdir(pushd)
 
